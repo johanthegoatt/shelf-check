@@ -85,9 +85,71 @@
     return num(s);
   }
 
+  // Reads a shelf offer. Supported:
+  //   "3 for $5"            multi: buy qty packs for a total price
+  //   "buy 2 get 1 free"    bogo: pay for `buy`, take `buy + free`
+  //   "2nd half price", "second one 30% off"   nth: the nth pack is cheaper
+  //   "20% off", "$1 off", "save 50p"
+  function parseDeal(text) {
+    var s = String(text || "").toLowerCase().trim();
+    if (!s) return null;
+    var m;
+    if ((m = s.match(/(\d+)\s*(?:for|x for)\s*[^\d]*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
+      var total = num(m[2]);
+      if (m[3]) total /= 100;
+      return { type: "multi", qty: parseInt(m[1], 10), price: total };
+    }
+    if (/\bbogo\b/.test(s)) return { type: "bogo", buy: 1, free: 1 };
+    if ((m = s.match(/buy\s*(\d+|one|two|three)\s*(?:,\s*)?get\s*(\d+|one|two|three)\s*free/))) {
+      return { type: "bogo", buy: word(m[1]), free: word(m[2]) };
+    }
+    if ((m = s.match(/(2nd|second|3rd|third)\b.*?(half price|half off|(\d+(?:\.\d+)?)\s*%\s*off|free)/))) {
+      var n = /2nd|second/.test(m[1]) ? 2 : 3;
+      var off = /half/.test(m[2]) ? 50 : m[2] === "free" ? 100 : parseFloat(m[3]);
+      return { type: "nth", n: n, off: off };
+    }
+    if ((m = s.match(/(\d+(?:[.,]\d+)?)\s*%\s*off/))) return { type: "percent", off: num(m[1]) };
+    if ((m = s.match(/(?:save\s*)?[^\d]*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?\s*(?:off)?/)) && /off|save/.test(s)) {
+      var v = num(m[1]);
+      if (m[2]) v /= 100;
+      return { type: "amount", off: v };
+    }
+    return null;
+  }
+
+  function word(w) {
+    return { one: 1, two: 2, three: 3 }[w] || parseInt(w, 10);
+  }
+
+  // What one pack really costs under an offer, and how many you have to put in
+  // the trolley to get that price.
+  function dealPrice(price, deal) {
+    if (!deal) return { each: price, mustBuy: 1, spend: price };
+    switch (deal.type) {
+      case "multi":
+        return { each: deal.price / deal.qty, mustBuy: deal.qty, spend: deal.price };
+      case "bogo": {
+        var take = deal.buy + deal.free;
+        return { each: (price * deal.buy) / take, mustBuy: take, spend: price * deal.buy };
+      }
+      case "nth": {
+        var spend = price * (deal.n - 1) + price * (1 - deal.off / 100);
+        return { each: spend / deal.n, mustBuy: deal.n, spend: spend };
+      }
+      case "percent":
+        return { each: price * (1 - deal.off / 100), mustBuy: 1, spend: price * (1 - deal.off / 100) };
+      case "amount":
+        var p = Math.max(0, price - deal.off);
+        return { each: p, mustBuy: 1, spend: p };
+    }
+    return { each: price, mustBuy: 1, spend: price };
+  }
+
   return {
     UNITS: UNITS,
     parseSize: parseSize,
-    parsePrice: parsePrice
+    parsePrice: parsePrice,
+    parseDeal: parseDeal,
+    dealPrice: dealPrice
   };
 });
