@@ -1,0 +1,10 @@
+{
+  "name": "shelf-check",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Find the real best deal on the shelf: unit prices, multi-buy offers and big packs that cost more.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
