@@ -1,0 +1,10 @@
+{
+  "name": "Shelf Check",
+  "short_name": "Shelf Check",
+  "description": "Which pack is really cheaper? Compare shelf labels by price per unit.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6efe2",
+  "theme_color": "#f6efe2",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

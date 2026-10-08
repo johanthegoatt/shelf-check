@@ -8,6 +8,8 @@
 <meta name="theme-color" content="#f6efe2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1b1712" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M10 8h28l18 24-18 24H10z' fill='%23ffcf3f' stroke='%232b2117' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='40' cy='32' r='5' fill='%232b2117'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -113,5 +115,6 @@
 <script src="src/engine.js"></script>
 <script src="src/tag.js"></script>
 <script src="src/app.js"></script>
+<script>if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>
 </html>
