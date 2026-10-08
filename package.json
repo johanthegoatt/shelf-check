@@ -2,9 +2,15 @@
   "name": "shelf-check",
   "version": "1.0.0",
   "private": true,
-  "description": "Find the real best deal on the shelf: unit prices, multi-buy offers and big packs that cost more.",
+  "description": "Which pack is really cheaper? Compare shelf labels by price per unit, with offers counted properly. Runs in the browser, works offline.",
   "scripts": {
     "test": "node --test"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://shelf-check.johanthegoat.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johanthegoatt/shelf-check.git"
+  },
+  "author": "Johan Braga"
 }
