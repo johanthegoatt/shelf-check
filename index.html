@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf Check: which one is really cheaper?</title>
+<meta name="description" content="Type what the shelf label says and see which pack is really the best deal, per 100 g, per litre or per item. Catches bigger packs that cost more and offers that are not deals. Works offline, no sign up.">
+<meta name="theme-color" content="#f6efe2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1712" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M10 8h28l18 24-18 24H10z' fill='%23ffcf3f' stroke='%232b2117' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='40' cy='32' r='5' fill='%232b2117'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#items">Skip to the form</a>
+<header class="top">
+  <div class="wrap">
+    <p class="brand"><span class="brand-tag" aria-hidden="true"></span>Shelf Check</p>
+    <h1>Which one is <em>really</em> cheaper?</h1>
+    <p class="lede">Type the price and size from each shelf label. I'll put them all in the same unit, count the offers properly and tell you which to grab.</p>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <section class="panel" aria-labelledby="items-h">
+    <div class="panel-head">
+      <h2 id="items-h">On the shelf</h2>
+      <button type="button" class="link" id="example">Try an example</button>
+    </div>
+    <form id="form" novalidate autocomplete="off">
+      <ol id="items" class="items"></ol>
+      <div class="form-foot">
+        <button type="button" class="btn ghost" id="add"><span aria-hidden="true">+</span> Add another</button>
+        <a class="link jump" href="#res-h">See the answer</a>
+        <button type="button" class="link quiet" id="clear">Clear all</button>
+      </div>
+    </form>
+    <details class="help">
+      <summary>What can I type?</summary>
+      <ul>
+        <li><strong>Price:</strong> $3.49, 3,49 €, £1, 99p, ₱125</li>
+        <li><strong>Size:</strong> 500 g, 1.5 kg, 16 oz, 2 lb 4 oz, 750 ml, 2 L, 12 fl oz, 6 x 330 ml, 12 rolls, 30 pods</li>
+        <li><strong>Offer:</strong> 3 for $5, buy 2 get 1 free, BOGO, 2nd half price, 20% off, $1 off, save 50p</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="panel results" aria-labelledby="res-h">
+    <div class="panel-head">
+      <h2 id="res-h">The answer</h2>
+      <div class="units" id="units" role="radiogroup" aria-label="Show price per"></div>
+    </div>
+    <div id="answer" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Everything stays on this device. No sign up, no tracking, works offline once loaded.</p>
+  <p>Made by <a href="https://johanthegoat.xyz">Johan</a> · <a href="https://github.com/johanthegoatt/shelf-check">Source</a></p>
+</footer>
+
+<template id="item-tpl">
+  <li class="item">
+    <div class="item-top">
+      <span class="item-num" aria-hidden="true"></span>
+      <label class="sr" data-for="name">Name</label>
+      <input class="name" data-f="name" placeholder="Name (optional)" maxlength="40">
+      <button type="button" class="x" aria-label="Remove">×</button>
+    </div>
+    <div class="fields">
+      <div class="field">
+        <label data-for="price">Price</label>
+        <input data-f="price" inputmode="decimal" placeholder="like 3.49">
+      </div>
+      <div class="field">
+        <label data-for="size">Size</label>
+        <input data-f="size" placeholder="like 500 g">
+      </div>
+      <div class="field wide">
+        <label data-for="deal">Offer <span class="opt">(optional)</span></label>
+        <input data-f="deal" placeholder="like 3 for $5">
+      </div>
+    </div>
+    <p class="err" hidden></p>
+  </li>
+</template>
+
+
+<script src="src/engine.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>
