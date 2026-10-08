@@ -41,6 +41,8 @@
   function parseSize(text) {
     if (text == null) return null;
     var s = String(text).toLowerCase().replace(/×/g, "x").replace(/fl\.?\s*oz/g, "floz").trim();
+    s = s.replace(/(\d+)?\s*([½¼¾])/g, function (_, w, f) { return String((w ? +w : 0) + { "½": 0.5, "¼": 0.25, "¾": 0.75 }[f]); });
+    s = s.replace(/(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)(?=\s*[a-z])/g, function (_, w, a, b) { return +b ? String((w ? +w : 0) + a / b) : _; });
     if (!s) return null;
     var packs = 1;
     var m = s.match(/^(\d+)\s*(?:x|pack of|pk|pack|\*)\s*(.+)$/);
@@ -78,6 +80,11 @@
     var s = String(text || "").toLowerCase().trim();
     if (!s) return null;
     var m;
+    if ((m = s.match(/^(\d+)\s*\/\s*[^\d\s]?\s*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?$/))) {
+      var t2 = num(m[2]);
+      if (m[3]) t2 /= 100;
+      return { type: "multi", qty: parseInt(m[1], 10), price: t2 };
+    }
     if ((m = s.match(/(\d+)\s*(?:for|x for)\s*[^\d]*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
       var total = num(m[2]);
       if (m[3]) total /= 100;

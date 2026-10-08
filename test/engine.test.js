@@ -150,3 +150,23 @@ test("works out the saving for the same amount", () => {
   close(s.perBuy, 1);
   close(s.perYear, 52);
 });
+
+test("reads US shelf shorthand", () => {
+  assert.deepEqual(S.parseDeal("2/$5"), { type: "multi", qty: 2, price: 5 });
+  assert.deepEqual(S.parseDeal("10 / $10"), { type: "multi", qty: 10, price: 10 });
+  assert.deepEqual(S.parseDeal("3/99c"), { type: "multi", qty: 3, price: 0.99 });
+  close(S.parseSize("1/2 gal").amount, 3785.411784 / 2);
+  close(S.parseSize("½ gallon").amount, 3785.411784 / 2);
+  close(S.parseSize("1 1/2 lb").amount, 1.5 * 453.59237);
+  close(S.parseSize("1¼ lb").amount, 1.25 * 453.59237);
+  assert.equal(S.parseSize("1/0 lb"), null);
+});
+
+test("a 2/$5 offer beats a lower shelf price per unit", () => {
+  const c = S.compare([
+    { name: "Shelf", price: "$2.69", size: "12 oz" },
+    { name: "Offer", price: "$3.29", size: "12 oz", deal: "2/$5" }
+  ]);
+  assert.equal(c.best.name, "Offer");
+  close(c.best.each, 2.5);
+});
