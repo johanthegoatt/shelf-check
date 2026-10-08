@@ -1,13 +1,9 @@
-/* Shelf Check engine. No DOM, so the page and node:test run the same code. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.ShelfCheck = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  // Every unit maps to a kind and a factor into that kind's base unit
-  // (grams, millilitres or single items). US customary volumes are used for
-  // fl oz, pint, quart and gallon because those are what US labels print.
   var UNITS = {
     mg: ["mass", 0.001], g: ["mass", 1], gram: ["mass", 1], grams: ["mass", 1], gr: ["mass", 1],
     kg: ["mass", 1000], kilo: ["mass", 1000], kilos: ["mass", 1000], kilogram: ["mass", 1000], kilograms: ["mass", 1000],
@@ -29,7 +25,6 @@
   };
 
   function num(s) {
-    // Accept a decimal comma ("1,5 kg") as long as it is not a thousands group.
     s = String(s).trim();
     if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
     else s = s.replace(",", ".");
@@ -43,15 +38,11 @@
     return UNITS[w] || null;
   }
 
-  // Reads what a label says the pack holds: "500g", "1.5 kg", "2 lb 4 oz",
-  // "6 x 330ml", "4 pack 250 ml", "12 rolls", "16 fl oz". Returns
-  // { kind, amount (in base units), packs, label } or null.
   function parseSize(text) {
     if (text == null) return null;
     var s = String(text).toLowerCase().replace(/×/g, "x").replace(/fl\.?\s*oz/g, "floz").trim();
     if (!s) return null;
     var packs = 1;
-    // Multipack forms: "6 x 330ml", "6x330 ml", "330ml x 6", "4 pack 250 ml".
     var m = s.match(/^(\d+)\s*(?:x|pack of|pk|pack|\*)\s*(.+)$/);
     if (m && /\d/.test(m[2])) { packs = parseInt(m[1], 10); s = m[2]; }
     else {
@@ -72,8 +63,6 @@
     return { kind: kind, amount: total * packs, packs: packs, label: String(text).trim() };
   }
 
-  // Reads a shelf price: "$3.49", "3,49 €", "£1", "99p", "₱125". Returns a
-  // number in the main currency unit, or NaN.
   function parsePrice(text) {
     if (typeof text === "number") return text;
     var s = String(text || "").trim().toLowerCase();
@@ -85,11 +74,6 @@
     return num(s);
   }
 
-  // Reads a shelf offer. Supported:
-  //   "3 for $5"            multi: buy qty packs for a total price
-  //   "buy 2 get 1 free"    bogo: pay for `buy`, take `buy + free`
-  //   "2nd half price", "second one 30% off"   nth: the nth pack is cheaper
-  //   "20% off", "$1 off", "save 50p"
   function parseDeal(text) {
     var s = String(text || "").toLowerCase().trim();
     if (!s) return null;
@@ -121,8 +105,6 @@
     return { one: 1, two: 2, three: 3 }[w] || parseInt(w, 10);
   }
 
-  // What one pack really costs under an offer, and how many you have to put in
-  // the trolley to get that price.
   function dealPrice(price, deal) {
     if (!deal) return { each: price, mustBuy: 1, spend: price };
     switch (deal.type) {
@@ -145,11 +127,115 @@
     return { each: price, mustBuy: 1, spend: price };
   }
 
+  var DISPLAY = {
+    mass: [["100g", 100, "100 g"], ["kg", 1000, "kg"], ["oz", 28.349523125, "oz"], ["lb", 453.59237, "lb"]],
+    volume: [["100ml", 100, "100 ml"], ["l", 1000, "litre"], ["floz", 29.5735295625, "fl oz"], ["gal", 3785.411784, "gallon"]],
+    count: [["item", 1, "item"]]
+  };
+  var IMPERIAL = /\b(oz|ounces?|lbs?|pounds?|fl\.?\s*oz|pints?|quarts?|gal|gallons?)\b/i;
+
+  function displayFor(kind, id) {
+    var list = DISPLAY[kind] || [];
+    for (var i = 0; i < list.length; i++) if (list[i][0] === id) return { id: list[i][0], base: list[i][1], label: list[i][2] };
+    return null;
+  }
+
+  function defaultDisplay(kind, labels) {
+    var imperial = labels.some(function (l) { return IMPERIAL.test(l); });
+    if (kind === "mass") return displayFor(kind, imperial ? "oz" : "100g");
+    if (kind === "volume") return displayFor(kind, imperial ? "floz" : "100ml");
+    return displayFor("count", "item");
+  }
+
+  var TIE = 0.01;
+
+  function compare(items, opts) {
+    opts = opts || {};
+    var rows = items.map(function (it, i) {
+      var row = { index: i, name: String(it.name || "").trim() || "Item " + (i + 1), ok: false };
+      var price = parsePrice(it.price);
+      var size = parseSize(it.size);
+      var deal = it.deal ? parseDeal(it.deal) : null;
+      if (!(price > 0)) row.error = "price";
+      else if (!size) row.error = "size";
+      else if (it.deal && String(it.deal).trim() && !deal) row.error = "deal";
+      if (row.error) return row;
+      var d = dealPrice(price, deal);
+      row.ok = true;
+      row.price = price;
+      row.size = size;
+      row.deal = deal;
+      row.each = d.each;
+      row.mustBuy = d.mustBuy;
+      row.spend = d.spend;
+      row.perBase = d.each / size.amount;
+      row.plainPerBase = price / size.amount;
+      return row;
+    });
+
+    var counts = {};
+    rows.forEach(function (r) { if (r.ok) counts[r.size.kind] = (counts[r.size.kind] || 0) + 1; });
+    var kind = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || null;
+    rows.forEach(function (r) { if (r.ok && r.size.kind !== kind) { r.ok = false; r.error = "kind"; } });
+
+    var good = rows.filter(function (r) { return r.ok; });
+    var display = kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
+    good.forEach(function (r) { r.unitPrice = r.perBase * display.base; });
+
+    var ranked = good.slice().sort(function (a, b) { return a.perBase - b.perBase || a.index - b.index; });
+    var best = ranked[0] || null;
+    ranked.forEach(function (r, i) {
+      r.rank = i + 1;
+      r.dearerPct = best ? (r.perBase / best.perBase - 1) * 100 : 0;
+      r.tied = r.dearerPct < TIE * 100;
+      r.best = r.tied;
+    });
+
+    return {
+      kind: kind,
+      display: display,
+      rows: rows,
+      ranked: ranked,
+      best: best,
+      tie: ranked.length > 1 && ranked[1].tied,
+      traps: findTraps(ranked),
+      bad: rows.filter(function (r) { return !r.ok; })
+    };
+  }
+
+  function findTraps(ranked) {
+    var traps = [];
+    ranked.forEach(function (big) {
+      var worstSmaller = null;
+      ranked.forEach(function (small) {
+        if (small === big || small.size.amount >= big.size.amount) return;
+        if (big.perBase > small.perBase * (1 + TIE) && (!worstSmaller || small.perBase < worstSmaller.perBase)) worstSmaller = small;
+      });
+      if (worstSmaller) traps.push({ type: "bigger-costs-more", item: big, than: worstSmaller, pct: (big.perBase / worstSmaller.perBase - 1) * 100 });
+    });
+    var best = ranked[0];
+    ranked.forEach(function (r) {
+      if (r.deal && !r.tied && best) traps.push({ type: "deal-not-best", item: r, than: best, pct: r.dearerPct });
+    });
+    return traps;
+  }
+
+  function saving(best, other, timesPerYear) {
+    if (!best || !other) return { perBuy: 0, perYear: 0 };
+    var amount = best.size.amount;
+    var perBuy = (other.perBase - best.perBase) * amount;
+    return { perBuy: perBuy, perYear: perBuy * (timesPerYear || 0) };
+  }
+
   return {
     UNITS: UNITS,
+    DISPLAY: DISPLAY,
     parseSize: parseSize,
     parsePrice: parsePrice,
     parseDeal: parseDeal,
-    dealPrice: dealPrice
+    dealPrice: dealPrice,
+    displayFor: displayFor,
+    compare: compare,
+    saving: saving
   };
 });

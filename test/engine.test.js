@@ -79,3 +79,74 @@ test("works out the real price per pack and how many you must buy", () => {
   close(S.dealPrice(0.8, { type: "amount", off: 1 }).each, 0);
   close(S.dealPrice(3, null).each, 3);
 });
+
+test("ranks by unit price and converts to one unit", () => {
+  const c = S.compare([
+    { name: "Small", price: "$2.00", size: "250 g" },
+    { name: "Big", price: "$5.00", size: "1 kg" },
+    { name: "Imported", price: "$3.00", size: "16 oz" }
+  ]);
+  assert.equal(c.kind, "mass");
+  assert.equal(c.display.id, "oz");
+  assert.equal(c.best.name, "Big");
+  assert.deepEqual(c.ranked.map(r => r.name), ["Big", "Imported", "Small"]);
+  close(c.ranked[2].dearerPct, 60);
+  close(c.best.unitPrice, 0.005 * 28.349523125);
+  const kg = S.compare([{ price: 2, size: "250 g" }], { display: "kg" });
+  close(kg.best.unitPrice, 8);
+});
+
+test("a multi-buy can win, and must-buy counts come through", () => {
+  const c = S.compare([
+    { name: "Single", price: "1.20", size: "400 g" },
+    { name: "Offer", price: "1.30", size: "400 g", deal: "3 for 3" }
+  ]);
+  assert.equal(c.best.name, "Offer");
+  assert.equal(c.best.mustBuy, 3);
+  close(c.best.each, 1);
+});
+
+test("flags a bigger pack that costs more per unit", () => {
+  const c = S.compare([
+    { name: "Spaghetti 1kg", price: "1.10", size: "1 kg" },
+    { name: "Spaghetti 2kg", price: "2.47", size: "2 kg" }
+  ]);
+  const trap = c.traps.find(t => t.type === "bigger-costs-more");
+  assert.ok(trap);
+  assert.equal(trap.item.name, "Spaghetti 2kg");
+  assert.equal(trap.than.name, "Spaghetti 1kg");
+  close(trap.pct, (2.47 / 2 / 1.1 - 1) * 100);
+});
+
+test("flags an offer that still loses", () => {
+  const c = S.compare([
+    { name: "Brand", price: "4.00", size: "500 ml", deal: "20% off" },
+    { name: "Own label", price: "2.50", size: "500 ml" }
+  ]);
+  const trap = c.traps.find(t => t.type === "deal-not-best");
+  assert.equal(trap.item.name, "Brand");
+  close(trap.pct, 28);
+});
+
+test("ties within 1% and leaves out what cannot be compared", () => {
+  const c = S.compare([
+    { name: "A", price: "1.00", size: "100 g" },
+    { name: "B", price: "2.01", size: "200 g" },
+    { name: "Juice", price: "1", size: "1 l" },
+    { name: "No price", price: "", size: "1 kg" },
+    { name: "Bad size", price: "2", size: "lots" }
+  ]);
+  assert.ok(c.tie);
+  assert.deepEqual(c.bad.map(r => [r.name, r.error]), [["Juice", "kind"], ["No price", "price"], ["Bad size", "size"]]);
+  assert.equal(c.traps.length, 0);
+});
+
+test("works out the saving for the same amount", () => {
+  const c = S.compare([
+    { name: "Cheap", price: "3", size: "1 kg" },
+    { name: "Dear", price: "2", size: "500 g" }
+  ]);
+  const s = S.saving(c.best, c.ranked[1], 52);
+  close(s.perBuy, 1);
+  close(s.perYear, 52);
+});
