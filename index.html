@@ -84,8 +84,34 @@
   </li>
 </template>
 
+<div class="tag-dock" id="tag-dock">
+  <p class="bubble" id="tag-bubble" role="status" aria-live="polite"></p>
+  <button type="button" class="tag" id="tag" data-mood="sleepy" aria-label="Tag, your shopping helper. Tap for a tip.">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <path class="t-string" d="M22 10 C 30 26, 34 34, 40 44"/>
+      <g class="t-body">
+        <path class="t-shape" d="M38 30 h52 a10 10 0 0 1 10 10 v52 a10 10 0 0 1 -10 10 h-52 l-24 -36 z"/>
+        <circle class="t-hole" cx="34" cy="66" r="5"/>
+        <g class="t-face">
+          <g class="t-eye" transform="translate(58 58)"><ellipse class="t-white" rx="8" ry="9"/><circle class="t-pupil" r="4"/></g>
+          <g class="t-eye" transform="translate(82 58)"><ellipse class="t-white" rx="8" ry="9"/><circle class="t-pupil" r="4"/></g>
+          <path class="t-lid" d="M49 52 h42"/>
+          <path class="t-mouth m-happy" d="M60 78 q10 9 20 0"/>
+          <path class="t-mouth m-flat" d="M62 80 h16"/>
+          <path class="t-mouth m-worry" d="M61 84 q9 -7 18 0"/>
+          <ellipse class="t-mouth m-wow" cx="70" cy="81" rx="5" ry="6"/>
+          <circle class="t-cheek" cx="50" cy="74" r="4"/>
+          <circle class="t-cheek" cx="90" cy="74" r="4"/>
+          <g class="t-think"><circle cx="100" cy="24" r="3"/><circle cx="108" cy="14" r="4.5"/></g>
+        </g>
+      </g>
+    </svg>
+  </button>
+  <button type="button" class="tag-hide" id="tag-hide" aria-label="Hide Tag">Hide</button>
+</div>
 
 <script src="src/engine.js"></script>
+<script src="src/tag.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

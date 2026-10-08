@@ -152,6 +152,43 @@ input::placeholder { color: var(--ink-2); opacity: 0.55; font-style: italic; }
 .foot { margin-top: 28px; color: var(--ink-2); font-size: 0.9rem; display: grid; gap: 4px; }
 .foot a { color: var(--ink); }
 
+.tag-dock { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 5; pointer-events: none; max-width: min(330px, calc(100vw - 32px)); }
+.tag-dock > * { pointer-events: auto; }
+.bubble { background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 14px 14px 4px 14px; padding: 10px 12px; font-size: 0.95rem; box-shadow: var(--shadow); }
+.bubble:empty { display: none; }
+.bubble.pop { animation: pop 0.22s ease-out; }
+.tag { width: 92px; height: 92px; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; touch-action: manipulation; }
+.tag svg { width: 100%; height: 100%; overflow: visible; }
+.t-string { fill: none; stroke: var(--ink-2); stroke-width: 2.5; stroke-linecap: round; }
+.t-shape { fill: var(--tag); stroke: #2b2117; stroke-width: 3.5; stroke-linejoin: round; }
+.t-hole { fill: var(--bg); stroke: #2b2117; stroke-width: 3; }
+.t-white { fill: #fff; stroke: #2b2117; stroke-width: 2.5; }
+.t-pupil { fill: #2b2117; transition: transform 0.08s linear; }
+.t-lid { stroke: #2b2117; stroke-width: 3; stroke-linecap: round; opacity: 0; }
+.t-mouth { fill: none; stroke: #2b2117; stroke-width: 3; stroke-linecap: round; display: none; }
+.m-wow { fill: #2b2117; }
+.t-cheek { fill: #ff8a5c; opacity: 0.55; }
+.t-think { fill: var(--ink-2); display: none; }
+.t-body { transform-origin: 60px 66px; transition: transform 0.25s ease; }
+.tag[data-mood="sleepy"] .m-flat,
+.tag[data-mood="thinking"] .m-flat,
+.tag[data-mood="happy"] .m-happy,
+.tag[data-mood="worried"] .m-worry,
+.tag[data-mood="wow"] .m-wow { display: block; }
+.tag[data-mood="thinking"] .t-think { display: block; }
+.tag[data-mood="thinking"] .t-body { transform: rotate(-6deg); }
+.tag[data-mood="worried"] .t-body { transform: rotate(5deg); }
+.tag[data-mood="sleepy"] .t-pupil { transform: translateY(3px) !important; }
+.tag[data-mood="sleepy"] .t-eye { transform-box: fill-box; }
+.tag[data-mood="sleepy"] .t-white { ry: 4; }
+.tag.blink .t-white { ry: 1; }
+.tag.blink .t-pupil { opacity: 0; }
+.tag.hop svg { animation: hop 0.45s ease-out; }
+.tag.wiggle svg { animation: wiggle 0.5s ease-in-out; }
+.tag-hide { font: inherit; font-size: 0.8rem; background: var(--paper); color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; min-height: 32px; cursor: pointer; }
+.tag-dock.tucked .bubble, .tag-dock.tucked .tag-hide { display: none; }
+.tag-dock.tucked .tag { width: 52px; height: 52px; opacity: 0.85; }
+
 @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes hop { 0%, 100% { transform: none; } 40% { transform: translateY(-12px) rotate(-4deg); } 70% { transform: translateY(2px); } }
 @keyframes wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
