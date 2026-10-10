@@ -170,3 +170,25 @@ test("a 2/$5 offer beats a lower shelf price per unit", () => {
   assert.equal(c.best.name, "Offer");
   close(c.best.each, 2.5);
 });
+
+test("rolls times sheets: compares per 100 sheets, not per roll", () => {
+  const a = S.parseSize("12 mega rolls, 320 sheets each");
+  assert.equal(a.noun, "sheet");
+  assert.equal(a.amount, 3840);
+  assert.equal(S.parseSize("2-ply 12 rolls of 240 sheets").amount, 2880);
+  assert.equal(S.parseSize("18 x 244 sheets").amount, 4392);
+  assert.equal(S.parseSize("12 double rolls").noun, "roll");
+  close(S.parseSize("6 cans x 12 fl oz").amount, 72 * 29.5735295625);
+  // Walmart shelf tags for these packs say 23.3 and 98.3 cents per 100 ct.
+  const c = S.compare([
+    { name: "Angel Soft", price: "$8.96", size: "12 mega rolls x 320 sheets" },
+    { name: "Cottonelle", price: "$15.80", size: "6 mega rolls x 268 sheets" },
+    { name: "Store brand", price: "$5", size: "24 rolls" }
+  ]);
+  assert.equal(c.noun, "sheet");
+  assert.equal(c.display.label, "100 sheets");
+  assert.deepEqual(c.ranked.map((r) => r.name), ["Angel Soft", "Cottonelle"]);
+  close(c.ranked[0].unitPrice, 0.2333, 1e-3);
+  close(c.ranked[1].unitPrice, 0.9826, 1e-3);
+  assert.deepEqual(c.bad.map((r) => r.error), ["noun"]);
+});

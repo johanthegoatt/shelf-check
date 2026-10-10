@@ -140,10 +140,14 @@
     price: function (it) { return it.price.trim() ? "I can't read that price. Try 3.49 or $3.49." : "Add the price from the label."; },
     size: function (it) { return it.size.trim() ? "I can't read that size. Try 500 g, 1.5 kg, 6 x 330 ml or 12 rolls." : "Add the size, like 500 g."; },
     deal: function () { return "I don't know that offer. Try 3 for $5, buy 2 get 1 free or 20% off. Or leave it empty."; },
-    kind: function (it, r) { return "This one is sold by " + KIND[r.size && r.size.kind || ""] + " but the others by " + KIND[last.kind] + ", so I left it out."; }
+    kind: function (it, r) { return "This one is sold by " + KIND[r.size && r.size.kind || ""] + " but the others by " + KIND[last.kind] + ", so I left it out."; },
+    noun: function (it, r) {
+      return "This one counts " + r.size.noun + "s but the others count " + last.noun + "s, so I left it out." +
+        (r.size.noun === "roll" || last.noun === "roll" ? " Add the sheets per roll from the pack, like 12 rolls x 240 sheets." : "");
+    }
   };
   var KIND = { mass: "weight", volume: "volume", count: "count", "": "something else" };
-  var FIELD = { price: "price", size: "size", deal: "deal", kind: "size" };
+  var FIELD = { price: "price", size: "size", deal: "deal", kind: "size", noun: "size" };
 
   function update(fromTyping) {
     var idx = [], input = [];
@@ -159,7 +163,7 @@
     c.rows.forEach(function (r) {
       if (!r.error) return;
       var i = idx[r.index], it = state.items[i], f = FIELD[r.error];
-      var show = r.error === "kind" || r.error === "deal" || it[f].trim() || touched[i + f];
+      var show = r.error === "kind" || r.error === "noun" || r.error === "deal" || it[f].trim() || touched[i + f];
       if (show) errs[i] = { field: f, text: ERR[r.error](it, r) };
     });
     Array.prototype.forEach.call(list.children, function (li) {
@@ -317,9 +321,11 @@
       answer.appendChild(t);
     }
 
-    var skipped = c.bad.filter(function (r) { return r.error === "kind"; });
+    var skipped = c.bad.filter(function (r) { return r.error === "kind" || r.error === "noun"; });
     if (skipped.length) {
-      answer.appendChild(el("p", "skipped", "Left out: " + skipped.map(function (r) { return r.name; }).join(", ") + " (sold by a different kind of unit)."));
+      answer.appendChild(el("p", "skipped", "Left out: " + skipped.map(function (r) { return r.name; }).join(", ") +
+        (c.kind === "count" && skipped.every(function (r) { return r.error === "noun"; })
+          ? " (counted in " + skipped[0].size.noun + "s, not " + c.noun + "s)." : " (sold by a different kind of unit).")));
     }
 
     var worst = c.ranked[c.ranked.length - 1];

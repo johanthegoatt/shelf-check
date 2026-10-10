@@ -2,7 +2,7 @@
   "name": "shelf-check",
   "version": "1.0.0",
   "private": true,
-  "description": "Which pack is really cheaper? Compare shelf labels by price per unit, with offers counted properly. Runs in the browser, works offline.",
+  "description": "Which pack is really cheaper? Compare shelf labels by price per unit, with offers counted properly.",
   "scripts": {
     "test": "node --test"
   },

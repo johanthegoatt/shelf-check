@@ -32,6 +32,19 @@
     return isFinite(n) ? n : NaN;
   }
 
+  // What a count is counting, so 12 rolls and 2,880 sheets are never ranked
+  // against each other. Plurals and near-synonyms map to one word.
+  var NOUNS = {
+    ea: "item", each: "item", ct: "item", count: "item", pc: "item", pcs: "item", piece: "item", pieces: "item",
+    item: "item", items: "item", pack: "pack", packs: "pack", roll: "roll", rolls: "roll", sheet: "sheet", sheets: "sheet",
+    tab: "tablet", tabs: "tablet", tablet: "tablet", tablets: "tablet", pod: "pod", pods: "pod", capsule: "pod", capsules: "pod",
+    bag: "bag", bags: "bag", can: "can", cans: "can", bottle: "bottle", bottles: "bottle", egg: "egg", eggs: "egg",
+    wash: "load", washes: "load", load: "load", loads: "load", nappy: "nappy", nappies: "nappy", diaper: "nappy", diapers: "nappy",
+    wipe: "wipe", wipes: "wipe"
+  };
+  // Words that describe a roll or pack without saying how much is in it.
+  var FLUFF = /\b(?:mega|double|triple|family|jumbo|giant|super|xl|xxl|huge|regular|standard|ultra|big|plus|value|club|bulk|sized?)\b/g;
+
   function unitOf(word) {
     var w = String(word || "").toLowerCase().replace(/\.$/, "").replace(/\s+/g, "");
     if (w === "fl.oz" || w === "fluidounce" || w === "fluidounces" || w === "fl") w = "floz";
@@ -43,6 +56,8 @@
     var s = String(text).toLowerCase().replace(/×/g, "x").replace(/fl\.?\s*oz/g, "floz").trim();
     s = s.replace(/(\d+)?\s*([½¼¾])/g, function (_, w, f) { return String((w ? +w : 0) + { "½": 0.5, "¼": 0.25, "¾": 0.75 }[f]); });
     s = s.replace(/(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)(?=\s*[a-z])/g, function (_, w, a, b) { return +b ? String((w ? +w : 0) + a / b) : _; });
+    s = s.replace(/\b\d+\s*-?\s*ply\b/g, " ").replace(FLUFF, " ").replace(/\b(?:each|per\s+[a-z]+|of)\b/g, " ")
+      .replace(/,(?!\d)/g, " ").replace(/\s+/g, " ").trim();
     if (!s) return null;
     var packs = 1;
     var m = s.match(/^(\d+)\s*(?:x|pack of|pk|pack|\*)\s*(.+)$/);
@@ -51,18 +66,30 @@
       m = s.match(/^(.+?)\s*(?:x|\*)\s*(\d+)$/);
       if (m && /[a-z]/.test(m[1])) { packs = parseInt(m[2], 10); s = m[1]; }
     }
-    var re = /(\d+(?:[.,]\d+)*)\s*([a-z.]+)?/g, part, kind = null, total = 0, found = false;
+    var re = /(\d+(?:[.,]\d+)*)\s*(?:x\s+|\*\s*)?([a-z.]+)?/g, part, parts = [];
     while ((part = re.exec(s))) {
       var amount = num(part[1]);
       var u = part[2] ? unitOf(part[2]) : ["count", 1];
       if (!u || !isFinite(amount)) return null;
-      if (kind && kind !== u[0]) return null;
-      kind = u[0];
-      total += amount * u[1];
-      found = true;
+      parts.push({ kind: u[0], amount: amount * u[1], noun: u[0] === "count" ? NOUNS[String(part[2] || "").toLowerCase()] || "item" : null });
     }
-    if (!found || !(total > 0) || !(packs > 0)) return null;
-    return { kind: kind, amount: total * packs, packs: packs, label: String(text).trim() };
+    if (!parts.length) return null;
+    // "12 rolls x 240 sheets" or "6 cans 12 fl oz": a count of packs, each
+    // holding something else. Measure the inside, times the count.
+    var first = parts[0], rest = parts.slice(1);
+    if (rest.length && first.kind === "count" && rest.every(function (p) { return p.kind !== "count" || p.noun !== first.noun; })) {
+      packs *= first.amount;
+      parts = rest;
+    }
+    var kind = parts[0].kind, noun = parts[0].noun, total = 0;
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].kind !== kind || parts[i].noun !== noun) return null;
+      total += parts[i].amount;
+    }
+    if (!(total > 0) || !(packs > 0)) return null;
+    var out = { kind: kind, amount: total * packs, packs: packs, label: String(text).trim() };
+    if (kind === "count") out.noun = noun;
+    return out;
   }
 
   function parsePrice(text) {
@@ -139,6 +166,13 @@
     volume: [["100ml", 100, "100 ml"], ["l", 1000, "litre"], ["floz", 29.5735295625, "fl oz"], ["gal", 3785.411784, "gallon"]],
     count: [["item", 1, "item"]]
   };
+  // Small things are priced per 100, the way shelf tags print "per 100 ct".
+  var PER_100 = { sheet: 1, wipe: 1, tablet: 1 };
+  function countDisplay(noun) {
+    noun = noun || "item";
+    if (PER_100[noun]) return { id: "item", base: 100, label: "100 " + noun + "s" };
+    return { id: "item", base: 1, label: noun };
+  }
   var IMPERIAL = /\b(oz|ounces?|lbs?|pounds?|fl\.?\s*oz|pints?|quarts?|gal|gallons?)\b/i;
 
   function displayFor(kind, id) {
@@ -184,9 +218,18 @@
     rows.forEach(function (r) { if (r.ok) counts[r.size.kind] = (counts[r.size.kind] || 0) + 1; });
     var kind = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || null;
     rows.forEach(function (r) { if (r.ok && r.size.kind !== kind) { r.ok = false; r.error = "kind"; } });
+    // Counts must count the same thing: rolls and sheets don't mix.
+    var noun = null;
+    if (kind === "count") {
+      var nouns = {};
+      rows.forEach(function (r) { if (r.ok) nouns[r.size.noun] = (nouns[r.size.noun] || 0) + 1; });
+      noun = Object.keys(nouns).sort(function (a, b) { return nouns[b] - nouns[a] || (b === "sheet") - (a === "sheet"); })[0];
+      rows.forEach(function (r) { if (r.ok && r.size.noun !== noun) { r.ok = false; r.error = "noun"; } });
+    }
 
     var good = rows.filter(function (r) { return r.ok; });
-    var display = kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
+    var display = kind === "count" ? countDisplay(noun)
+      : kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
     good.forEach(function (r) { r.unitPrice = r.perBase * display.base; });
 
     var ranked = good.slice().sort(function (a, b) { return a.perBase - b.perBase || a.index - b.index; });
@@ -200,6 +243,7 @@
 
     return {
       kind: kind,
+      noun: noun,
       display: display,
       rows: rows,
       ranked: ranked,
