@@ -276,7 +276,7 @@
       var tied = c.ranked.filter(function (r) { return r.tied && r !== best; }).map(function (r) { return r.name; });
       note = "Same price per unit as " + tied.join(", ") + " (within 1%). Pick the one you like.";
     } else if (c.ranked[1]) {
-      note = Math.round(c.ranked[1].dearerPct) + "% cheaper than the next best.";
+      note = Math.round(c.cheaperPct) + "% cheaper than the next best.";
     }
     if (best.mustBuy > 1) note += " You need to buy " + best.mustBuy + " to get this price (" + money(best.spend, sym) + " in total).";
     if (note) w.appendChild(el("p", "w-note", note.trim()));

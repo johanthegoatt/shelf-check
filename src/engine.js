@@ -249,6 +249,9 @@
       ranked: ranked,
       best: best,
       tie: ranked.length > 1 && ranked[1].tied,
+      // How much less the best costs than the runner-up, as a share of the
+      // runner-up's price. Never over 100%: "50% dearer" is "33% cheaper".
+      cheaperPct: ranked.length > 1 ? (1 - ranked[0].perBase / ranked[1].perBase) * 100 : 0,
       traps: findTraps(ranked),
       bad: rows.filter(function (r) { return !r.ok; })
     };

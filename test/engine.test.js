@@ -192,3 +192,14 @@ test("rolls times sheets: compares per 100 sheets, not per roll", () => {
   close(c.ranked[1].unitPrice, 0.9826, 1e-3);
   assert.deepEqual(c.bad.map((r) => r.error), ["noun"]);
 });
+
+test("cheaper percent is measured against the runner-up", () => {
+  const c = S.compare([
+    { name: "A", price: "1", size: "100 g" },
+    { name: "B", price: "1.50", size: "100 g" }
+  ]);
+  close(c.ranked[1].dearerPct, 50);
+  close(c.cheaperPct, 100 / 3);
+  const far = S.compare([{ name: "A", price: "1", size: "100 g" }, { name: "B", price: "5", size: "100 g" }]);
+  assert.ok(far.cheaperPct < 100);
+});
