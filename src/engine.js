@@ -132,7 +132,15 @@
       if (m[3]) t2 /= 100;
       return { type: "multi", qty: parseInt(m[1], 10), price: t2 };
     }
-    if ((m = s.match(/(\d+)\s*(?:for|x for)\s*[^\d]*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
+    if ((m = s.match(/^b(\d)g(\d)(?:\s*free)?$/))) return { type: "bogo", buy: +m[1], free: +m[2] };
+    if ((m = s.match(/(\d+)\s*(?:for|x for)\s*([^\d]*)(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
+      // "3 for 2" with no money in it is the British buy-3-pay-for-2, not
+      // three for 2 pounds: a smaller whole number and no currency sign.
+      var qty = parseInt(m[1], 10);
+      if (!m[2].trim() && !m[4] && /^\d+$/.test(m[3]) && +m[3] < qty) {
+        return { type: "bogo", buy: +m[3], free: qty - +m[3] };
+      }
+      m = [m[0], m[1], m[3], m[4]];
       var total = num(m[2]);
       if (m[3]) total /= 100;
       return { type: "multi", qty: parseInt(m[1], 10), price: total };
@@ -140,6 +148,21 @@
     if (/\bbogo\b/.test(s)) return { type: "bogo", buy: 1, free: 1 };
     if ((m = s.match(/buy\s*(\d+|one|two|three)\s*(?:,\s*)?get\s*(\d+|one|two|three)\s*free/))) {
       return { type: "bogo", buy: word(m[1]), free: word(m[2]) };
+    }
+    if ((m = s.match(/buy\s*(\d+|one|two|three)\s*(?:,\s*)?get\s*(\d+|one|two|three)\s*(?:at\s*)?(half price|half off|(\d+(?:\.\d+)?)\s*%\s*off)/))) {
+      return { type: "bogo", buy: word(m[1]), free: word(m[2]), off: /half/.test(m[3]) ? 50 : parseFloat(m[4]) };
+    }
+    // "buy 3 save $2" and "save 20% when you buy 2": the saving needs that many.
+    var need = s.match(/(?:buy|when you buy|on)\s*(\d+|two|three)\b/);
+    if (need && /save|off/.test(s)) {
+      var qtyNeeded = word(need[1]);
+      var rest = s.replace(need[0], " ");
+      if ((m = rest.match(/(\d+(?:[.,]\d+)?)\s*%/))) return { type: "percent", off: num(m[1]), qty: qtyNeeded };
+      if ((m = rest.match(/[^\d]*(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
+        var saved = num(m[1]);
+        if (m[2]) saved /= 100;
+        return { type: "save", qty: qtyNeeded, off: saved };
+      }
     }
     if ((m = s.match(/(2nd|second|3rd|third)\b.*?(half price|half off|(\d+(?:\.\d+)?)\s*%\s*off|free)/))) {
       var n = /2nd|second/.test(m[1]) ? 2 : 3;
@@ -166,14 +189,22 @@
         return { each: deal.price / deal.qty, mustBuy: deal.qty, spend: deal.price };
       case "bogo": {
         var take = deal.buy + deal.free;
-        return { each: (price * deal.buy) / take, mustBuy: take, spend: price * deal.buy };
+        var paid = price * deal.buy + price * deal.free * (1 - (deal.off == null ? 100 : deal.off) / 100);
+        return { each: paid / take, mustBuy: take, spend: paid };
+      }
+      case "save": {
+        var total = Math.max(0, price * deal.qty - deal.off);
+        return { each: total / deal.qty, mustBuy: deal.qty, spend: total };
       }
       case "nth": {
         var spend = price * (deal.n - 1) + price * (1 - deal.off / 100);
         return { each: spend / deal.n, mustBuy: deal.n, spend: spend };
       }
-      case "percent":
-        return { each: price * (1 - deal.off / 100), mustBuy: 1, spend: price * (1 - deal.off / 100) };
+      case "percent": {
+        var q = deal.qty || 1;
+        var cut = price * (1 - deal.off / 100);
+        return { each: cut, mustBuy: q, spend: cut * q };
+      }
       case "amount":
         var p = Math.max(0, price - deal.off);
         return { each: p, mustBuy: 1, spend: p };

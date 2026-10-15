@@ -212,3 +212,25 @@ test("cheaper percent is measured against the runner-up", () => {
   const far = S.compare([{ name: "A", price: "1", size: "100 g" }, { name: "B", price: "5", size: "100 g" }]);
   assert.ok(far.cheaperPct < 100);
 });
+
+test("offers that used to be misread", () => {
+  const each = (deal, price = 2) => S.dealPrice(price, S.parseDeal(deal));
+  // British "3 for 2": take three, pay for two.
+  assert.deepEqual(S.parseDeal("3 for 2"), { type: "bogo", buy: 2, free: 1 });
+  close(each("3 for 2").each, 4 / 3);
+  // With money in it, it is a total price.
+  assert.deepEqual(S.parseDeal("10 for $10"), { type: "multi", qty: 10, price: 10 });
+  assert.deepEqual(S.parseDeal("2 for 3"), { type: "multi", qty: 2, price: 3 });
+  // The saving needs the quantity.
+  const save = each("buy 3 save $2");
+  assert.equal(save.mustBuy, 3);
+  close(save.spend, 4);
+  close(each("buy 2 save 50p").each, 1.75);
+  // Only the free one is discounted.
+  close(each("buy one get one 50% off").each, 1.5);
+  close(each("buy 2 get 1 half price").spend, 5);
+  assert.deepEqual(S.parseDeal("B2G1"), { type: "bogo", buy: 2, free: 1 });
+  const pct = each("40% off when you buy 2");
+  assert.equal(pct.mustBuy, 2);
+  close(pct.each, 1.2);
+});
