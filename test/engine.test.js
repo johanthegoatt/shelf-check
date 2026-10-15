@@ -45,6 +45,15 @@ test("reads shelf prices in common styles", () => {
   close(S.parsePrice("99p"), 0.99);
   close(S.parsePrice("₱1,250.50"), 1250.5);
   close(S.parsePrice(2.5), 2.5);
+  close(S.parsePrice("1.299,00 €"), 1299);
+  close(S.parsePrice("€1.299"), 1299);
+  close(S.parsePrice("$1,250"), 1250);
+  close(S.parsePrice("1 299,50 kr"), 1299.5);
+  close(S.parsePrice("Rs. 120"), 120);
+  close(S.parsePrice("R$ 5,99"), 5.99);
+  close(S.parsePrice("CHF 2.50"), 2.5);
+  close(S.parsePrice("0.125"), 0.125);
+  close(S.parsePrice("₹1,20,000"), 120000);
   assert.ok(Number.isNaN(S.parsePrice("free")));
 });
 

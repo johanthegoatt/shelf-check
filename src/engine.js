@@ -97,10 +97,30 @@
     var s = String(text || "").trim().toLowerCase();
     var pence = s.match(/^(\d+)\s*(p|c|¢|cents?)$/);
     if (pence) return parseInt(pence[1], 10) / 100;
-    s = s.replace(/[^\d.,]/g, "");
-    if (!s) return NaN;
-    if (/,\d{2}$/.test(s) && s.indexOf(".") === -1) s = s.replace(",", ".");
-    return num(s);
+    // The first run of digits and separators, so the dot in "Rs." or "R$"
+    // is never taken for a decimal point.
+    var m = s.match(/\d(?:[\d.,'\u00a0\u202f ]*\d)?/);
+    return m ? amount(m[0].replace(/['\u00a0\u202f ]/g, "")) : NaN;
+  }
+
+  // Which of . and , is the decimal point. With both, the last one is
+  // (1.299,00 and 1,299.00). With one kind used more than once, it groups
+  // thousands (1.250.000). A lone one followed by exactly three digits groups
+  // thousands too (1.299 €, $1,250), unless the number starts 0 (0.125).
+  function amount(t) {
+    var lastDot = t.lastIndexOf("."), lastComma = t.lastIndexOf(",");
+    var dec = "";
+    if (lastDot >= 0 && lastComma >= 0) dec = lastDot > lastComma ? "." : ",";
+    else if (lastDot >= 0 || lastComma >= 0) {
+      var sep = lastDot >= 0 ? "." : ",";
+      var parts = t.split(sep);
+      var grouped = parts.length > 2 || (parts[1].length === 3 && parts[0] !== "0");
+      dec = grouped ? "" : sep;
+    }
+    var other = dec === "." ? /,/g : dec === "," ? /\./g : /[.,]/g;
+    t = t.replace(other, "");
+    if (dec === ",") t = t.replace(",", ".");
+    return parseFloat(t);
   }
 
   function parseDeal(text) {

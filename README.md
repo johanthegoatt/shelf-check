@@ -18,7 +18,7 @@ So people do the maths in their head in the aisle, or give up and guess. Sources
 
 - Reads sizes the way labels print them: `500 g`, `1.5 kg`, `16 oz`, `2 lb 4 oz`, `1/2 gal`, `750 ml`, `12 fl oz`, `6 x 330 ml`, `12 rolls`, `30 pods`.
 - Reads packs of packs: `12 mega rolls x 320 sheets`, `6 rolls, 268 sheets each`, `6 cans x 12 fl oz`. Toilet paper is compared per 100 sheets, because a "mega roll" means a different number of regular rolls from brand to brand (Charmin sells 1 Mega as 4 regular and 6 Mega XL as 36, per [these](https://www.walmart.com/ip/Charmin-Toilet-Paper-Ultra-Soft-6-Mega-XL-Rolls/3491999312) [listings](https://www.walmart.com/ip/Cottonelle-Ultra-ComfortCare-2-Ply-Standard-Toilet-Paper-White-268-Sheets-Roll-6-Mega-Rolls-Pack/5335376087)). A pack that only says rolls is left out with a note asking for the sheets per roll.
-- Reads prices in common styles: `$3.49`, `3,49 €`, `£1`, `99p`, `₱1,250.50`.
+- Reads prices in common styles: `$3.49`, `3,49 €`, `1.299,00 €`, `£1`, `99p`, `₱1,250.50`, `Rs. 120`.
 - Reads offers: `3 for $5`, `2/$5`, `buy 2 get 1 free`, `BOGO`, `2nd half price`, `20% off`, `$1 off`, `save 50p`, and tells you how many you must buy to get the price.
 - Ranks everything by price per unit and lets you switch between per 100 g, kg, oz and lb (or 100 ml, litre, fl oz, gallon). It starts in the unit your labels use.
 - Warns about the two shelf traps: a bigger pack that costs more per unit than a smaller one, and an offer that still loses to something else.
