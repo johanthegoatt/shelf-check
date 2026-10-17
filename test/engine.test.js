@@ -234,3 +234,43 @@ test("offers that used to be misread", () => {
   assert.equal(pct.mustBuy, 2);
   close(pct.each, 1.2);
 });
+
+test("loyalty price only counts when the card is on", () => {
+  const items = [
+    { name: "Big", price: "6", size: "1 kg", memberPrice: "4" },
+    { name: "Small", price: "2.50", size: "500 g" }
+  ];
+  // Card off: Big is 6/kg, Small is 5/kg, so Small wins.
+  const off = S.compare(items);
+  assert.equal(off.best.name, "Small");
+  assert.equal(off.anyMember, true);
+  // Card on: Big drops to 4/kg and takes the lead.
+  const on = S.compare(items, { member: true });
+  assert.equal(on.best.name, "Big");
+  assert.equal(on.best.usedMember, true);
+  assert.equal(on.memberChangesBest, true);
+});
+
+test("a member price never makes a pack dearer than its shelf price", () => {
+  const on = S.compare([
+    { name: "A", price: "3", size: "1 kg", memberPrice: "5" },
+    { name: "B", price: "4", size: "1 kg" }
+  ], { member: true });
+  // The 5 member price is ignored because the shelf price of 3 is lower.
+  assert.equal(on.best.name, "A");
+  assert.equal(on.best.usedMember, false);
+  close(on.best.unitPrice, 0.3); // per 100 g, still the 3 shelf price
+});
+
+test("without any member prices the card toggle changes nothing", () => {
+  const items = [
+    { name: "A", price: "2", size: "500 g" },
+    { name: "B", price: "3", size: "1 kg" }
+  ];
+  const off = S.compare(items);
+  const on = S.compare(items, { member: true });
+  assert.equal(off.anyMember, false);
+  assert.equal(on.memberChangesBest, false);
+  assert.equal(off.best.name, on.best.name);
+  close(off.best.unitPrice, on.best.unitPrice);
+});

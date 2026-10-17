@@ -262,6 +262,10 @@
       row.spend = d.spend;
       row.perBase = d.each / size.amount;
       row.plainPerBase = price / size.amount;
+      // An optional loyalty or member price for the same pack. Parsed the same
+      // way as any other price; ignored if it is not a real number.
+      var mp = (it.memberPrice != null && String(it.memberPrice).trim()) ? parsePrice(it.memberPrice) : null;
+      if (mp > 0) row.memberPrice = mp;
       return row;
     });
 
@@ -279,30 +283,53 @@
     }
 
     var good = rows.filter(function (r) { return r.ok; });
+    var member = !!opts.member;
+    var anyMember = good.some(function (r) { return r.memberPrice > 0; });
+    // With a loyalty card you pay the lower of the shelf deal and the card
+    // price, so that is what we rank on when the card is switched on.
+    good.forEach(function (r) {
+      r.memberPerBase = r.memberPrice > 0 ? r.memberPrice / r.size.amount : null;
+      r.effPerBase = (member && r.memberPerBase != null) ? Math.min(r.perBase, r.memberPerBase) : r.perBase;
+      r.usedMember = member && r.memberPerBase != null && r.memberPerBase < r.perBase;
+    });
     var display = kind === "count" ? countDisplay(noun)
       : kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
-    good.forEach(function (r) { r.unitPrice = r.perBase * display.base; });
+    good.forEach(function (r) { r.unitPrice = r.effPerBase * display.base; });
 
-    var ranked = good.slice().sort(function (a, b) { return a.perBase - b.perBase || a.index - b.index; });
+    var ranked = good.slice().sort(function (a, b) { return a.effPerBase - b.effPerBase || a.index - b.index; });
     var best = ranked[0] || null;
     ranked.forEach(function (r, i) {
       r.rank = i + 1;
-      r.dearerPct = best ? (r.perBase / best.perBase - 1) * 100 : 0;
+      r.dearerPct = best ? (r.effPerBase / best.effPerBase - 1) * 100 : 0;
       r.tied = r.dearerPct < TIE * 100;
       r.best = r.tied;
     });
+
+    // Would the best buy be a different pack if you did not have the card?
+    function bestIndex(useMember) {
+      var bi = -1, bv = Infinity;
+      good.forEach(function (r) {
+        var v = (useMember && r.memberPerBase != null) ? Math.min(r.perBase, r.memberPerBase) : r.perBase;
+        if (v < bv - 1e-12) { bv = v; bi = r.index; }
+      });
+      return bi;
+    }
+    var memberChangesBest = anyMember && bestIndex(false) !== bestIndex(true);
 
     return {
       kind: kind,
       noun: noun,
       display: display,
+      member: member,
+      anyMember: anyMember,
+      memberChangesBest: memberChangesBest,
       rows: rows,
       ranked: ranked,
       best: best,
       tie: ranked.length > 1 && ranked[1].tied,
       // How much less the best costs than the runner-up, as a share of the
       // runner-up's price. Never over 100%: "50% dearer" is "33% cheaper".
-      cheaperPct: ranked.length > 1 ? (1 - ranked[0].perBase / ranked[1].perBase) * 100 : 0,
+      cheaperPct: ranked.length > 1 ? (1 - ranked[0].effPerBase / ranked[1].effPerBase) * 100 : 0,
       traps: findTraps(ranked),
       bad: rows.filter(function (r) { return !r.ok; })
     };
@@ -314,9 +341,9 @@
       var worstSmaller = null;
       ranked.forEach(function (small) {
         if (small === big || small.size.amount >= big.size.amount) return;
-        if (big.perBase > small.perBase * (1 + TIE) && (!worstSmaller || small.perBase < worstSmaller.perBase)) worstSmaller = small;
+        if (big.effPerBase > small.effPerBase * (1 + TIE) && (!worstSmaller || small.effPerBase < worstSmaller.effPerBase)) worstSmaller = small;
       });
-      if (worstSmaller) traps.push({ type: "bigger-costs-more", item: big, than: worstSmaller, pct: (big.perBase / worstSmaller.perBase - 1) * 100 });
+      if (worstSmaller) traps.push({ type: "bigger-costs-more", item: big, than: worstSmaller, pct: (big.effPerBase / worstSmaller.effPerBase - 1) * 100 });
     });
     var best = ranked[0];
     ranked.forEach(function (r) {
@@ -328,7 +355,9 @@
   function saving(best, other, timesPerYear) {
     if (!best || !other) return { perBuy: 0, perYear: 0 };
     var amount = best.size.amount;
-    var perBuy = (other.perBase - best.perBase) * amount;
+    var bp = best.effPerBase != null ? best.effPerBase : best.perBase;
+    var op = other.effPerBase != null ? other.effPerBase : other.perBase;
+    var perBuy = (op - bp) * amount;
     return { perBuy: perBuy, perYear: perBuy * (timesPerYear || 0) };
   }
 
