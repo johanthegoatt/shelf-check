@@ -21,6 +21,7 @@ So people do the maths in their head in the aisle, or give up and guess. Sources
 - Reads prices in common styles: `$3.49`, `3,49 €`, `1.299,00 €`, `£1`, `99p`, `₱1,250.50`, `Rs. 120`.
 - Reads offers: `3 for $5`, `2/$5`, `3 for 2` (pay for two), `buy 2 get 1 free`, `B2G1`, `BOGO`, `buy one get one 50% off`, `buy 3 save $2`, `2nd half price`, `20% off`, `$1 off`, `save 50p`, and tells you how many you must buy to get the price.
 - Ranks everything by price per unit and lets you switch between per 100 g, kg, oz and lb (or 100 ml, litre, fl oz, gallon). It starts in the unit your labels use.
+- Counts a loyalty or member price if you type one and tick the box. It ranks on the price you would actually pay (the lower of the shelf deal and the card price) and flags when the card changes which pack is the best buy. The CMA's November 2024 review found loyalty prices across five UK supermarkets saved members 17% to 25% on average, yet 40% of shoppers did not trust they were a real saving, so seeing the real best buy with the card in hand matters.
 - Warns about the two shelf traps: a bigger pack that costs more per unit than a smaller one, and an offer that still loses to something else.
 - Shows what the cheaper pick saves in a year at how often you buy it.
 - Leaves out an item sold by a different kind of unit (weight vs volume) and says why, instead of guessing.

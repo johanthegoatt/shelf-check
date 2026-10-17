@@ -9,11 +9,11 @@
   var noop = function () {};
   var Tag = window.Tag || { mood: noop, react: noop, start: noop, thinking: noop, settle: noop };
 
-  var state = { items: [blank(), blank()], unit: null, often: "52" };
+  var state = { items: [blank(), blank()], unit: null, often: "52", member: false };
   var touched = {};
   var last = null, lastSig = "", timer = 0;
 
-  function blank() { return { name: "", price: "", size: "", deal: "" }; }
+  function blank() { return { name: "", price: "", size: "", deal: "", memberPrice: "" }; }
 
   function load() {
     try {
@@ -22,16 +22,17 @@
       var s = JSON.parse(raw);
       if (!s || !Array.isArray(s.items) || !s.items.length) return false;
       state.items = s.items.slice(0, 12).map(function (it) {
-        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal) };
+        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal), memberPrice: str(it.memberPrice) };
       });
       state.unit = typeof s.unit === "string" ? s.unit : null;
       state.often = ["0", "12", "26", "52", "104"].indexOf(s.often) >= 0 ? s.often : "52";
+      state.member = !!s.member;
       return true;
     } catch (e) { return false; }
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   function str(v) { return typeof v === "string" ? v.slice(0, 60) : ""; }
-  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim()); }
+  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim() || it.memberPrice.trim()); }
 
   function renderItems(focusIndex) {
     list.textContent = "";
@@ -108,10 +109,10 @@
   });
   document.getElementById("example").addEventListener("click", function () {
     state.items = [
-      { name: "Spaghetti 500 g", price: "$0.75", size: "500 g", deal: "" },
-      { name: "Spaghetti 1 kg", price: "$1.10", size: "1 kg", deal: "" },
-      { name: "Spaghetti 2 kg \"value pack\"", price: "$2.47", size: "2 kg", deal: "" },
-      { name: "Fancy linguine", price: "$1.60", size: "500 g", deal: "2 for $1.30" }
+      { name: "Spaghetti 500 g", price: "$0.75", size: "500 g", deal: "", memberPrice: "" },
+      { name: "Spaghetti 1 kg", price: "$1.10", size: "1 kg", deal: "", memberPrice: "" },
+      { name: "Spaghetti 2 kg \"value pack\"", price: "$2.47", size: "2 kg", deal: "", memberPrice: "$1.70" },
+      { name: "Fancy linguine", price: "$1.60", size: "500 g", deal: "2 for $1.30", memberPrice: "" }
     ];
     state.unit = null;
     touched = {};
@@ -154,10 +155,11 @@
     state.items.forEach(function (it, i) {
       if (!filled(it)) return;
       idx.push(i);
-      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal });
+      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal, memberPrice: it.memberPrice });
     });
-    var c = S.compare(input, { display: state.unit || undefined });
+    var c = S.compare(input, { display: state.unit || undefined, member: state.member });
     last = c;
+    renderCardToggle(c);
 
     var errs = {};
     c.rows.forEach(function (r) {
@@ -240,6 +242,20 @@
     Tag.react("unit");
   }
 
+  var cardToggle = document.getElementById("card-toggle");
+  var cardBox = document.getElementById("card");
+  function renderCardToggle(c) {
+    // Only offer the card option once a card price has actually been typed.
+    cardToggle.hidden = !c.anyMember;
+    cardBox.checked = state.member;
+  }
+  cardBox.addEventListener("change", function () {
+    state.member = cardBox.checked;
+    save();
+    update(false);
+    Tag.react(state.member ? "cardon" : "cardoff");
+  });
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -279,8 +295,21 @@
       note = Math.round(c.cheaperPct) + "% cheaper than the next best.";
     }
     if (best.mustBuy > 1) note += " You need to buy " + best.mustBuy + " to get this price (" + money(best.spend, sym) + " in total).";
+    if (best.usedMember) note += " That's the loyalty card price.";
     if (note) w.appendChild(el("p", "w-note", note.trim()));
     answer.appendChild(w);
+
+    if (c.memberChangesBest) {
+      var mc = el("div", "trap");
+      if (c.member) {
+        mc.appendChild(el("strong", null, "The card changes the winner"));
+        mc.appendChild(document.createTextNode("With the loyalty card a different pack is cheapest here. Without the card, pick the next one down."));
+      } else {
+        mc.appendChild(el("strong", null, "The card would change the best buy"));
+        mc.appendChild(document.createTextNode("A card price you typed would make a different pack cheapest. Tick \"Count the card price\" above to see which."));
+      }
+      answer.appendChild(mc);
+    }
 
     var max = c.ranked[c.ranked.length - 1].unitPrice || 1;
     var ol = el("ol", "rank");
@@ -290,6 +319,7 @@
       var nm = el("span", "r-name", r.name);
       if (r.tied) nm.appendChild(el("span", "pill good", "best"));
       else nm.appendChild(el("span", "pill", "+" + Math.round(r.dearerPct) + "%"));
+      if (r.usedMember) nm.appendChild(el("span", "pill card", "card"));
       li.appendChild(nm);
       li.appendChild(el("span", "r-price", money(r.unitPrice, sym) + per));
       var bar = el("span", "r-bar");

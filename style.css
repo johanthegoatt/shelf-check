@@ -138,6 +138,10 @@ input::placeholder { color: var(--ink-2); opacity: 0.55; font-style: italic; }
 .r-meta { grid-column: 1 / -1; font-size: 0.85rem; color: var(--ink-2); }
 .pill { display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--bad-soft); color: var(--bad); margin-left: 4px; }
 .pill.good { background: var(--good-soft); color: var(--good); }
+.pill.card { background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--line); }
+.card-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--ink-2); margin: 0 0 14px; cursor: pointer; }
+.card-toggle input { width: 18px; height: 18px; accent-color: var(--good); flex: 0 0 auto; }
+.card-toggle[hidden] { display: none; }
 
 .traps { margin-top: 16px; display: grid; gap: 8px; }
 .trap { border-left: 4px solid var(--bad); background: var(--bad-soft); border-radius: 0 var(--r-s) var(--r-s) 0; padding: 10px 12px; font-size: 0.95rem; }

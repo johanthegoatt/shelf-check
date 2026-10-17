@@ -42,6 +42,7 @@
         <li><strong>Price:</strong> $3.49, 3,49 €, £1, 99p, ₱125</li>
         <li><strong>Size:</strong> 500 g, 1.5 kg, 16 oz, 2 lb 4 oz, 1/2 gal, 750 ml, 2 L, 12 fl oz, 6 x 330 ml, 12 rolls, 30 pods</li>
         <li><strong>Offer:</strong> 3 for $5, 2/$5, buy 2 get 1 free, BOGO, 2nd half price, 20% off, $1 off, save 50p</li>
+        <li><strong>Card price:</strong> the loyalty or member price if the label shows one. Tick the box under "The answer" to count it.</li>
       </ul>
     </details>
   </section>
@@ -51,6 +52,7 @@
       <h2 id="res-h">The answer</h2>
       <div class="units" id="units" role="radiogroup" aria-label="Show price per"></div>
     </div>
+    <label class="card-toggle" id="card-toggle" hidden><input type="checkbox" id="card"> Count the card price <span class="opt">(if you have the loyalty card)</span></label>
     <div id="answer" aria-live="polite"></div>
   </section>
 </main>
@@ -76,9 +78,13 @@
         <label data-for="size">Size</label>
         <input data-f="size" placeholder="like 500 g">
       </div>
-      <div class="field wide">
+      <div class="field">
         <label data-for="deal">Offer <span class="opt">(optional)</span></label>
         <input data-f="deal" placeholder="like 3 for $5">
+      </div>
+      <div class="field">
+        <label data-for="memberPrice">Card price <span class="opt">(optional)</span></label>
+        <input data-f="memberPrice" inputmode="decimal" placeholder="like 2.99">
       </div>
     </div>
     <p class="err" hidden></p>
