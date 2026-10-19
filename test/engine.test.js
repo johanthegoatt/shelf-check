@@ -274,3 +274,51 @@ test("without any member prices the card toggle changes nothing", () => {
   assert.equal(off.best.name, on.best.name);
   close(off.best.unitPrice, on.best.unitPrice);
 });
+
+// ---- concentrates / dilution: compare on the made-up amount ----
+
+test("a concentrate that makes more wins over ready-to-use on the prepared price", () => {
+  // 500 ml squash at $3 makes 2 L -> $1.50 per made-up L.
+  // 1 L ready-to-drink at $2 -> $2 per L. The concentrate is cheaper prepared.
+  var r = S.compare([
+    { name: "Squash", price: "$3", size: "500 ml", makes: "2 L" },
+    { name: "Ready to drink", price: "$2", size: "1 L" }
+  ]);
+  assert.equal(r.anyDiluted, true);
+  assert.equal(r.best.name, "Squash");
+  // prepared per ml: $3 / 2000 ml = 0.0015/ml; ready: $2 / 1000 = 0.0020/ml
+  assert.ok(Math.abs(r.ranked[0].perBase - 0.0015) < 1e-9);
+  assert.ok(Math.abs(r.ranked[1].perBase - 0.0020) < 1e-9);
+});
+
+test("without makes, the ready-to-use pack is unchanged and still compared on its own size", () => {
+  var r = S.compare([
+    { name: "Squash", price: "$3", size: "500 ml" },
+    { name: "Ready to drink", price: "$2", size: "1 L" }
+  ]);
+  assert.equal(r.anyDiluted, false);
+  // 300c/500ml = 0.6 vs 200c/1000ml = 0.2 -> ready to drink wins
+  assert.equal(r.best.name, "Ready to drink");
+});
+
+test("a makes in the wrong kind of unit is ignored, not trusted", () => {
+  var r = S.compare([
+    { name: "A", price: "$2", size: "500 ml", makes: "2 kg" },
+    { name: "B", price: "$3", size: "1 L" }
+  ]);
+  var a = r.rows.find(function (x) { return x.name === "A"; });
+  assert.equal(a.diluted, false);
+  assert.equal(a.makesIgnored, true);
+  assert.equal(a.preparedAmount, 500); // fell back to the pack size
+});
+
+test("the yearly saving uses the prepared amount for a diluted best buy", () => {
+  var r = S.compare([
+    { name: "Concentrate", price: "$4", size: "1 L", makes: "4 L" }, // 1 c/ml
+    { name: "Ready", price: "$6", size: "4 L" }                       // 1.5 c/ml
+  ]);
+  var s = S.saving(r.ranked[0], r.ranked[1], 12);
+  // ($0.0015 - $0.0010)/ml * 4000 ml = $2 a buy; * 12 = $24 a year
+  assert.ok(Math.abs(s.perBuy - 2) < 1e-9);
+  assert.ok(Math.abs(s.perYear - 24) < 1e-9);
+});

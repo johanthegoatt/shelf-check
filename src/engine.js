@@ -260,8 +260,24 @@
       row.each = d.each;
       row.mustBuy = d.mustBuy;
       row.spend = d.spend;
-      row.perBase = d.each / size.amount;
-      row.plainPerBase = price / size.amount;
+      // A concentrate or squash makes more than the bottle holds. If "makes"
+      // is given (as a prepared size, e.g. 2 L), compare on the made-up amount,
+      // not the pack size, so a cheap bottle that makes little loses fairly.
+      // It must be the same kind of unit as the pack; you can't make a volume
+      // from a weight. With nothing given, the prepared amount is the pack size,
+      // so every existing comparison is unchanged.
+      var makes = (it.makes != null && String(it.makes).trim()) ? parseSize(it.makes) : null;
+      if (makes && makes.kind === size.kind && makes.amount > 0) {
+        row.makes = makes;
+        row.preparedAmount = makes.amount;
+        row.diluted = true;
+      } else {
+        row.preparedAmount = size.amount;
+        row.diluted = false;
+        if (makes && makes.kind !== size.kind) row.makesIgnored = true;
+      }
+      row.perBase = d.each / row.preparedAmount;
+      row.plainPerBase = price / row.preparedAmount;
       // An optional loyalty or member price for the same pack. Parsed the same
       // way as any other price; ignored if it is not a real number.
       var mp = (it.memberPrice != null && String(it.memberPrice).trim()) ? parsePrice(it.memberPrice) : null;
@@ -288,7 +304,7 @@
     // With a loyalty card you pay the lower of the shelf deal and the card
     // price, so that is what we rank on when the card is switched on.
     good.forEach(function (r) {
-      r.memberPerBase = r.memberPrice > 0 ? r.memberPrice / r.size.amount : null;
+      r.memberPerBase = r.memberPrice > 0 ? r.memberPrice / r.preparedAmount : null;
       r.effPerBase = (member && r.memberPerBase != null) ? Math.min(r.perBase, r.memberPerBase) : r.perBase;
       r.usedMember = member && r.memberPerBase != null && r.memberPerBase < r.perBase;
     });
@@ -323,6 +339,7 @@
       member: member,
       anyMember: anyMember,
       memberChangesBest: memberChangesBest,
+      anyDiluted: good.some(function (r) { return r.diluted; }),
       rows: rows,
       ranked: ranked,
       best: best,
@@ -354,7 +371,7 @@
 
   function saving(best, other, timesPerYear) {
     if (!best || !other) return { perBuy: 0, perYear: 0 };
-    var amount = best.size.amount;
+    var amount = best.preparedAmount != null ? best.preparedAmount : best.size.amount;
     var bp = best.effPerBase != null ? best.effPerBase : best.perBase;
     var op = other.effPerBase != null ? other.effPerBase : other.perBase;
     var perBuy = (op - bp) * amount;
