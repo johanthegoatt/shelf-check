@@ -13,7 +13,7 @@
   var touched = {};
   var last = null, lastSig = "", timer = 0;
 
-  function blank() { return { name: "", price: "", size: "", deal: "", memberPrice: "", makes: "" }; }
+  function blank() { return { name: "", price: "", size: "", deal: "", memberPrice: "", makes: "", servings: "" }; }
 
   function load() {
     try {
@@ -22,7 +22,7 @@
       var s = JSON.parse(raw);
       if (!s || !Array.isArray(s.items) || !s.items.length) return false;
       state.items = s.items.slice(0, 12).map(function (it) {
-        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal), memberPrice: str(it.memberPrice), makes: str(it.makes) };
+        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal), memberPrice: str(it.memberPrice), makes: str(it.makes), servings: str(it.servings) };
       });
       state.unit = typeof s.unit === "string" ? s.unit : null;
       state.often = ["0", "12", "26", "52", "104"].indexOf(s.often) >= 0 ? s.often : "52";
@@ -32,7 +32,7 @@
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   function str(v) { return typeof v === "string" ? v.slice(0, 60) : ""; }
-  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim() || it.memberPrice.trim() || it.makes.trim()); }
+  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim() || it.memberPrice.trim() || it.makes.trim() || it.servings.trim()); }
 
   function renderItems(focusIndex) {
     list.textContent = "";
@@ -155,7 +155,7 @@
     state.items.forEach(function (it, i) {
       if (!filled(it)) return;
       idx.push(i);
-      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal, memberPrice: it.memberPrice, makes: it.makes });
+      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal, memberPrice: it.memberPrice, makes: it.makes, servings: it.servings });
     });
     var c = S.compare(input, { display: state.unit || undefined, member: state.member });
     last = c;
@@ -268,7 +268,12 @@
     var sym = currency();
     // When any pack is a concentrate, every price is shown per made-up unit so
     // the comparison is like for like.
-    var per = c.display ? " per " + (c.anyDiluted ? "made-up " : "") + c.display.label : "";
+    // When every item gives a serving count, the headline switches to price
+    // per serving, which is what you actually pay to use the thing once.
+    var byServing = c.byServing;
+    var per = byServing ? " per serving"
+      : (c.display ? " per " + (c.anyDiluted ? "made-up " : "") + c.display.label : "");
+    function priceOf(r) { return byServing ? r.effPerServing : r.unitPrice; }
     if (!c.ranked.length) {
       var e = el("div", "empty");
       e.appendChild(el("strong", null, "Nothing to compare yet"));
@@ -279,7 +284,7 @@
     if (c.ranked.length === 1) {
       var one = c.ranked[0];
       var e1 = el("div", "empty");
-      e1.appendChild(el("strong", null, one.name + ": " + money(one.unitPrice, sym) + per));
+      e1.appendChild(el("strong", null, one.name + ": " + money(priceOf(one), sym) + per));
       e1.appendChild(document.createTextNode("Add one more item to see which is cheaper."));
       answer.appendChild(e1);
       return;
@@ -288,7 +293,7 @@
     var w = el("div", "winner");
     w.appendChild(el("small", null, c.tie ? "It's a tie" : "Best buy"));
     w.appendChild(el("p", "w-name", best.name));
-    w.appendChild(el("p", "w-unit", money(best.unitPrice, sym) + per));
+    w.appendChild(el("p", "w-unit", money(priceOf(best), sym) + per));
     var note = "";
     if (c.tie) {
       var tied = c.ranked.filter(function (r) { return r.tied && r !== best; }).map(function (r) { return r.name; });
@@ -313,7 +318,7 @@
       answer.appendChild(mc);
     }
 
-    var max = c.ranked[c.ranked.length - 1].unitPrice || 1;
+    var max = priceOf(c.ranked[c.ranked.length - 1]) || 1;
     var ol = el("ol", "rank");
     ol.setAttribute("aria-label", "All items, cheapest first");
     c.ranked.forEach(function (r) {
@@ -323,14 +328,15 @@
       else nm.appendChild(el("span", "pill", "+" + Math.round(r.dearerPct) + "%"));
       if (r.usedMember) nm.appendChild(el("span", "pill card", "card"));
       li.appendChild(nm);
-      li.appendChild(el("span", "r-price", money(r.unitPrice, sym) + per));
+      li.appendChild(el("span", "r-price", money(priceOf(r), sym) + per));
       var bar = el("span", "r-bar");
       bar.setAttribute("aria-hidden", "true");
       var fill = el("span");
-      fill.style.width = Math.max(4, (r.unitPrice / max) * 100) + "%";
+      fill.style.width = Math.max(4, (priceOf(r) / max) * 100) + "%";
       bar.appendChild(fill);
       li.appendChild(bar);
       var meta = money(r.price, sym) + " for " + r.size.label;
+      if (byServing && r.servings) meta += ", " + r.servings + " servings";
       if (r.deal) meta += ", with the offer " + money(r.each, sym) + " each" + (r.mustBuy > 1 ? " if you buy " + r.mustBuy : "");
       li.appendChild(el("span", "r-meta", meta));
       ol.appendChild(li);
