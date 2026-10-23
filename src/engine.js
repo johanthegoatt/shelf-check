@@ -282,6 +282,13 @@
       // way as any other price; ignored if it is not a real number.
       var mp = (it.memberPrice != null && String(it.memberPrice).trim()) ? parsePrice(it.memberPrice) : null;
       if (mp > 0) row.memberPrice = mp;
+      // How many servings or uses the pack gives (cups of coffee, loads of
+      // washing, bowls of cereal). Unit price per 100 g only helps when the
+      // unit matches how you use it; a concentrated detergent needs less per
+      // load, so a dearer-per-100ml bottle can be cheaper per wash. Given per
+      // item, the pack is also ranked by price per serving.
+      var sv = (it.servings != null && String(it.servings).trim()) ? num(it.servings) : null;
+      if (sv > 0) row.servings = sv;
       return row;
     });
 
@@ -307,16 +314,28 @@
       r.memberPerBase = r.memberPrice > 0 ? r.memberPrice / r.preparedAmount : null;
       r.effPerBase = (member && r.memberPerBase != null) ? Math.min(r.perBase, r.memberPerBase) : r.perBase;
       r.usedMember = member && r.memberPerBase != null && r.memberPerBase < r.perBase;
+      // Per-serving, when the pack says how many servings it gives.
+      r.perServing = r.servings > 0 ? r.each / r.servings : null;
+      r.plainPerServing = r.servings > 0 ? r.price / r.servings : null;
+      r.memberPerServing = (r.servings > 0 && r.memberPrice > 0) ? r.memberPrice / r.servings : null;
+      r.effPerServing = r.servings > 0
+        ? ((member && r.memberPerServing != null) ? Math.min(r.perServing, r.memberPerServing) : r.perServing)
+        : null;
     });
+
+    // Rank by price per serving only when every item in the shortlist gives a
+    // serving count; otherwise nothing changes and ranking stays per unit.
+    var byServing = good.length > 0 && good.every(function (r) { return r.servings > 0; });
+    function metric(r) { return byServing ? r.effPerServing : r.effPerBase; }
     var display = kind === "count" ? countDisplay(noun)
       : kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
     good.forEach(function (r) { r.unitPrice = r.effPerBase * display.base; });
 
-    var ranked = good.slice().sort(function (a, b) { return a.effPerBase - b.effPerBase || a.index - b.index; });
+    var ranked = good.slice().sort(function (a, b) { return metric(a) - metric(b) || a.index - b.index; });
     var best = ranked[0] || null;
     ranked.forEach(function (r, i) {
       r.rank = i + 1;
-      r.dearerPct = best ? (r.effPerBase / best.effPerBase - 1) * 100 : 0;
+      r.dearerPct = best ? (metric(r) / metric(best) - 1) * 100 : 0;
       r.tied = r.dearerPct < TIE * 100;
       r.best = r.tied;
     });
@@ -340,13 +359,14 @@
       anyMember: anyMember,
       memberChangesBest: memberChangesBest,
       anyDiluted: good.some(function (r) { return r.diluted; }),
+      byServing: byServing,
       rows: rows,
       ranked: ranked,
       best: best,
       tie: ranked.length > 1 && ranked[1].tied,
       // How much less the best costs than the runner-up, as a share of the
       // runner-up's price. Never over 100%: "50% dearer" is "33% cheaper".
-      cheaperPct: ranked.length > 1 ? (1 - ranked[0].effPerBase / ranked[1].effPerBase) * 100 : 0,
+      cheaperPct: ranked.length > 1 ? (1 - metric(ranked[0]) / metric(ranked[1])) * 100 : 0,
       traps: findTraps(ranked),
       bad: rows.filter(function (r) { return !r.ok; })
     };
