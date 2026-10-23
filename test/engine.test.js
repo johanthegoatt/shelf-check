@@ -322,3 +322,40 @@ test("the yearly saving uses the prepared amount for a diluted best buy", () => 
   assert.ok(Math.abs(s.perBuy - 2) < 1e-9);
   assert.ok(Math.abs(s.perYear - 24) < 1e-9);
 });
+
+test("per-serving ranking flips the winner when concentration differs", () => {
+  // A: 1 L for 6, makes 40 washes -> 0.15/wash but 0.006/ml (dearer per ml).
+  // B: 2 L for 7, makes 28 washes -> 0.25/wash but 0.0035/ml (cheaper per ml).
+  const items = [
+    { name: "Concentrate", price: "6", size: "1 L", servings: "40" },
+    { name: "Dilute", price: "7", size: "2 L", servings: "28" }
+  ];
+  const r = S.compare(items);
+  assert.equal(r.byServing, true);
+  // Per wash the concentrate wins, even though it's dearer per millilitre.
+  assert.equal(r.best.name, "Concentrate");
+  assert.ok(Math.abs(r.best.perServing - 0.15) < 1e-9);
+});
+
+test("serving ranking is off unless every item gives a serving count", () => {
+  const items = [
+    { name: "A", price: "6", size: "1 L", servings: "40" },
+    { name: "B", price: "7", size: "2 L" } // no servings
+  ];
+  const r = S.compare(items);
+  assert.equal(r.byServing, false);
+  // Falls back to per-litre, where B (0.0035/ml) beats A (0.006/ml).
+  assert.equal(r.best.name, "B");
+});
+
+test("a member price is used per serving too", () => {
+  const items = [
+    { name: "A", price: "10", size: "1 L", servings: "20", memberPrice: "6" },
+    { name: "B", price: "7", size: "1 L", servings: "20" }
+  ];
+  const off = S.compare(items, { member: false });
+  assert.equal(off.best.name, "B"); // 7 < 10
+  const on = S.compare(items, { member: true });
+  assert.equal(on.best.name, "A"); // card drops A to 6 < 7
+  assert.ok(Math.abs(on.best.effPerServing - 0.3) < 1e-9); // 6/20
+});
