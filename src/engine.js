@@ -267,14 +267,28 @@
       // from a weight. With nothing given, the prepared amount is the pack size,
       // so every existing comparison is unchanged.
       var makes = (it.makes != null && String(it.makes).trim()) ? parseSize(it.makes) : null;
+      // Tinned food in brine or water is sold by net weight but labelled with
+      // a smaller drained weight: the solid food once the liquid is poured off
+      // (EU/UK food law requires it, FIC Reg. 1169/2011 Annex IX). The honest
+      // comparison is per drained weight, since the brine is not what you eat.
+      // A drained amount must be the same kind as the pack and no larger than
+      // it; a concentrate ("makes") is the opposite case and takes precedence.
+      var drained = (it.drained != null && String(it.drained).trim()) ? parseSize(it.drained) : null;
       if (makes && makes.kind === size.kind && makes.amount > 0) {
         row.makes = makes;
         row.preparedAmount = makes.amount;
         row.diluted = true;
+        if (drained) row.drainedIgnored = true;
+      } else if (drained && drained.kind === size.kind && drained.amount > 0 && drained.amount <= size.amount + 1e-9) {
+        row.drained = drained;
+        row.preparedAmount = drained.amount;
+        row.drainedBasis = true;
+        row.diluted = false;
       } else {
         row.preparedAmount = size.amount;
         row.diluted = false;
         if (makes && makes.kind !== size.kind) row.makesIgnored = true;
+        if (drained && (drained.kind !== size.kind || drained.amount > size.amount + 1e-9)) row.drainedIgnored = true;
       }
       row.perBase = d.each / row.preparedAmount;
       row.plainPerBase = price / row.preparedAmount;
@@ -359,6 +373,7 @@
       anyMember: anyMember,
       memberChangesBest: memberChangesBest,
       anyDiluted: good.some(function (r) { return r.diluted; }),
+      anyDrained: good.some(function (r) { return r.drainedBasis; }),
       byServing: byServing,
       rows: rows,
       ranked: ranked,
