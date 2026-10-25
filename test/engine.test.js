@@ -359,3 +359,51 @@ test("a member price is used per serving too", () => {
   assert.equal(on.best.name, "A"); // card drops A to 6 < 7
   assert.ok(Math.abs(on.best.effPerServing - 0.3) < 1e-9); // 6/20
 });
+
+test("tinned food is ranked on its drained weight, not the net weight in brine", () => {
+  // 400 g tin, 240 g drained, at 90p -> 90/240 per g drained. A 400 g tin
+  // with no brine at 95p is 95/400 per g. Per net the second looks dearer;
+  // per drained the first is, since you pay the same money for less food.
+  const r = S.compare([
+    { name: "In brine", price: "90p", size: "400g", drained: "240g" },
+    { name: "No brine", price: "95p", size: "400g" }
+  ]);
+  const brine = r.rows[0], plain = r.rows[1];
+  assert.equal(brine.drainedBasis, true);
+  assert.equal(brine.preparedAmount, 240);
+  assert.equal(r.anyDrained, true);
+  close(brine.perBase, 0.90 / 240);
+  close(plain.perBase, 0.95 / 400);
+  assert.equal(r.best.name, "No brine"); // cheaper per gram of actual food
+});
+
+test("a drained weight larger than the net weight is ignored, not trusted", () => {
+  const r = S.compare([
+    { name: "A", price: "$2", size: "400g", drained: "500g" },
+    { name: "B", price: "$3", size: "400g" }
+  ]);
+  const a = r.rows[0];
+  assert.equal(a.drainedBasis, undefined);
+  assert.equal(a.drainedIgnored, true);
+  assert.equal(a.preparedAmount, 400); // fell back to the net size
+});
+
+test("a concentrate takes precedence over a drained weight if both are given", () => {
+  const r = S.compare([
+    { name: "Odd", price: "$3", size: "500 ml", makes: "2 L", drained: "400 ml" }
+  ]);
+  const a = r.rows[0];
+  assert.equal(a.diluted, true);
+  assert.equal(a.preparedAmount, 2000);
+  assert.equal(a.drainedIgnored, true);
+});
+
+test("without a drained weight, tinned comparisons are unchanged", () => {
+  const r = S.compare([
+    { name: "A", price: "90p", size: "400g" },
+    { name: "B", price: "95p", size: "400g" }
+  ]);
+  assert.equal(r.anyDrained, false);
+  assert.equal(r.rows[0].preparedAmount, 400);
+  assert.equal(r.best.name, "A");
+});
