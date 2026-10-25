@@ -13,7 +13,7 @@
   var touched = {};
   var last = null, lastSig = "", timer = 0;
 
-  function blank() { return { name: "", price: "", size: "", deal: "", memberPrice: "", makes: "", servings: "" }; }
+  function blank() { return { name: "", price: "", size: "", deal: "", memberPrice: "", makes: "", drained: "", servings: "" }; }
 
   function load() {
     try {
@@ -22,7 +22,7 @@
       var s = JSON.parse(raw);
       if (!s || !Array.isArray(s.items) || !s.items.length) return false;
       state.items = s.items.slice(0, 12).map(function (it) {
-        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal), memberPrice: str(it.memberPrice), makes: str(it.makes), servings: str(it.servings) };
+        return { name: str(it.name), price: str(it.price), size: str(it.size), deal: str(it.deal), memberPrice: str(it.memberPrice), makes: str(it.makes), drained: str(it.drained), servings: str(it.servings) };
       });
       state.unit = typeof s.unit === "string" ? s.unit : null;
       state.often = ["0", "12", "26", "52", "104"].indexOf(s.often) >= 0 ? s.often : "52";
@@ -32,7 +32,7 @@
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   function str(v) { return typeof v === "string" ? v.slice(0, 60) : ""; }
-  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim() || it.memberPrice.trim() || it.makes.trim() || it.servings.trim()); }
+  function filled(it) { return !!(it.price.trim() || it.size.trim() || it.deal.trim() || it.memberPrice.trim() || it.makes.trim() || it.drained.trim() || it.servings.trim()); }
 
   function renderItems(focusIndex) {
     list.textContent = "";
@@ -155,7 +155,7 @@
     state.items.forEach(function (it, i) {
       if (!filled(it)) return;
       idx.push(i);
-      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal, memberPrice: it.memberPrice, makes: it.makes, servings: it.servings });
+      input.push({ name: it.name.trim() || "Item " + (i + 1), price: it.price, size: it.size, deal: it.deal, memberPrice: it.memberPrice, makes: it.makes, drained: it.drained, servings: it.servings });
     });
     var c = S.compare(input, { display: state.unit || undefined, member: state.member });
     last = c;
@@ -272,7 +272,7 @@
     // per serving, which is what you actually pay to use the thing once.
     var byServing = c.byServing;
     var per = byServing ? " per serving"
-      : (c.display ? " per " + (c.anyDiluted ? "made-up " : "") + c.display.label : "");
+      : (c.display ? " per " + (c.anyDiluted ? "made-up " : c.anyDrained ? "drained " : "") + c.display.label : "");
     function priceOf(r) { return byServing ? r.effPerServing : r.unitPrice; }
     if (!c.ranked.length) {
       var e = el("div", "empty");
