@@ -71,6 +71,15 @@ test("reads shelf offers", () => {
   assert.deepEqual(S.parseDeal("save 50p"), { type: "amount", off: 0.5 });
   assert.equal(S.parseDeal(""), null);
   assert.equal(S.parseDeal("great value"), null);
+  // "£X each when you buy N": a per-one price that needs the quantity.
+  assert.deepEqual(S.parseDeal("£1.50 each when you buy 2"), { type: "each", qty: 2, price: 1.5 });
+  assert.deepEqual(S.parseDeal("2 for £1.50 each"), { type: "each", qty: 2, price: 1.5 });
+  assert.deepEqual(S.parseDeal("£1.50 ea on 3+"), { type: "each", qty: 3, price: 1.5 });
+  assert.deepEqual(S.parseDeal("89p each buy 4"), { type: "each", qty: 4, price: 0.89 });
+  assert.deepEqual(S.parseDeal("£2 each"), { type: "each", qty: 1, price: 2 });
+  // "each" must not steal a plain lump multibuy that has no "each" word.
+  assert.deepEqual(S.parseDeal("3 for 2"), { type: "bogo", buy: 2, free: 1 });
+  assert.deepEqual(S.parseDeal("2 for £3"), { type: "multi", qty: 2, price: 3 });
 });
 
 test("works out the real price per pack and how many you must buy", () => {
@@ -87,6 +96,10 @@ test("works out the real price per pack and how many you must buy", () => {
   close(S.dealPrice(10, { type: "percent", off: 20 }).each, 8);
   close(S.dealPrice(0.8, { type: "amount", off: 1 }).each, 0);
   close(S.dealPrice(3, null).each, 3);
+  const each = S.dealPrice(2, { type: "each", qty: 3, price: 1.5 });
+  close(each.each, 1.5);
+  assert.equal(each.mustBuy, 3);
+  close(each.spend, 4.5);
 });
 
 test("ranks by unit price and converts to one unit", () => {
