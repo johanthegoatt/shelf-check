@@ -133,6 +133,23 @@
       return { type: "multi", qty: parseInt(m[1], 10), price: t2 };
     }
     if ((m = s.match(/^b(\d)g(\d)(?:\s*free)?$/))) return { type: "bogo", buy: +m[1], free: +m[2] };
+    // "£1.50 each when you buy 2", "2 for £1.50 each", "£1.50 ea on 3+": a set
+    // per-unit price that only applies once you take the quantity. Different
+    // from "2 for £3" (a lump price) because the price given is already per one.
+    // The "each"/"ea" word is what tells the two apart, so this runs first.
+    if (/\b(?:ea|each)\b/.test(s)) {
+      var pm = s.match(/(\d+(?:[.,]\d+)?)\s*(p|c|¢)?\s*(?:ea|each)\b/);
+      if (!pm) pm = s.match(/(?:ea|each)\D{0,8}?(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/);
+      if (pm) {
+        var pe = num(pm[1]);
+        if (pm[2]) pe /= 100;
+        var qm = s.match(/(\d+)\s*\+/) ||
+          s.match(/(?:buy|when you buy|on|of)\s*(\d+)/) ||
+          s.match(/^\s*(\d+)\s*(?:for|at|x)\b/);
+        var qn = qm ? parseInt(qm[1], 10) : 1;
+        if (isFinite(pe) && pe >= 0 && qn >= 1) return { type: "each", qty: qn, price: pe };
+      }
+    }
     if ((m = s.match(/(\d+)\s*(?:for|x for)\s*([^\d]*)(\d+(?:[.,]\d+)?)\s*(p|c|¢)?/))) {
       // "3 for 2" with no money in it is the British buy-3-pay-for-2, not
       // three for 2 pounds: a smaller whole number and no currency sign.
@@ -187,6 +204,9 @@
     switch (deal.type) {
       case "multi":
         return { each: deal.price / deal.qty, mustBuy: deal.qty, spend: deal.price };
+      case "each":
+        // The price is already per one; you just have to take the quantity.
+        return { each: deal.price, mustBuy: deal.qty, spend: deal.price * deal.qty };
       case "bogo": {
         var take = deal.buy + deal.free;
         var paid = price * deal.buy + price * deal.free * (1 - (deal.off == null ? 100 : deal.off) / 100);
