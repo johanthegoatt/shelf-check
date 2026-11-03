@@ -323,6 +323,21 @@
       // item, the pack is also ranked by price per serving.
       var sv = (it.servings != null && String(it.servings).trim()) ? num(it.servings) : null;
       if (sv > 0) row.servings = sv;
+      // Protein per 100 g off the nutrition label (EU/UK law requires the
+      // per-100 g figure: FIC Reg. 1169/2011). For a mass item this gives the
+      // price per 100 g of protein, the value shoppers mean by "cheap protein":
+      // a dearer-per-kilo food can still be the cheaper source of protein.
+      // Shown as extra information; it never changes the per-unit ranking.
+      var pr = (it.protein != null && String(it.protein).trim()) ? num(it.protein) : null;
+      if (pr > 0 && row.size.kind === "mass") {
+        row.proteinPer100g = pr;
+        var proteinG = (row.preparedAmount / 100) * pr; // total grams of protein in the pack
+        if (proteinG > 0) {
+          row.proteinG = proteinG;
+          row.costPer100gProtein = (row.each / proteinG) * 100;
+          if (mp > 0) row.memberCostPer100gProtein = (mp / proteinG) * 100;
+        }
+      }
       return row;
     });
 
@@ -394,6 +409,7 @@
       memberChangesBest: memberChangesBest,
       anyDiluted: good.some(function (r) { return r.diluted; }),
       anyDrained: good.some(function (r) { return r.drainedBasis; }),
+      anyProtein: good.some(function (r) { return r.costPer100gProtein > 0; }),
       byServing: byServing,
       rows: rows,
       ranked: ranked,

@@ -420,3 +420,33 @@ test("without a drained weight, tinned comparisons are unchanged", () => {
   assert.equal(r.rows[0].preparedAmount, 400);
   assert.equal(r.best.name, "A");
 });
+
+test("price per 100 g of protein is worked out for mass items", () => {
+  // 500 g at £5, 25 g protein per 100 g -> 125 g protein -> £4 per 100 g protein.
+  const r = S.compare([{ name: "Chicken", price: "5", size: "500 g", protein: "25" }]);
+  const row = r.ranked[0];
+  assert.equal(Math.round(row.proteinG), 125);
+  assert.equal(Math.round(row.costPer100gProtein * 100) / 100, 4);
+  assert.ok(r.anyProtein);
+});
+
+test("protein never changes the per-unit ranking", () => {
+  // The bigger tub is cheaper per 100 g but a poorer protein source; the per-unit
+  // winner must still be the cheaper-per-100 g one.
+  const r = S.compare([
+    { name: "Cheap bulk", price: "4", size: "1000 g", protein: "5" },
+    { name: "Lean", price: "6", size: "500 g", protein: "30" }
+  ]);
+  assert.equal(r.best.name, "Cheap bulk"); // cheaper per 100 g
+  const lean = r.ranked.find((x) => x.name === "Lean");
+  // but Lean is the cheaper protein source
+  assert.ok(lean.costPer100gProtein < r.best.costPer100gProtein);
+});
+
+test("protein is ignored for volume items and when blank", () => {
+  const vol = S.compare([{ name: "Milk", price: "1", size: "1 L", protein: "3" }]);
+  assert.equal(vol.ranked[0].costPer100gProtein, undefined);
+  assert.equal(vol.anyProtein, false);
+  const none = S.compare([{ name: "Rice", price: "2", size: "1 kg" }]);
+  assert.equal(none.anyProtein, false);
+});
