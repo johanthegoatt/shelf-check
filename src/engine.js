@@ -252,10 +252,22 @@
     return null;
   }
 
-  function defaultDisplay(kind, labels) {
+  // Pick the unit the shelf ticket uses, so the number matches what's on the
+  // label you're checking against. Shops price most things per kg or per litre,
+  // dropping to per 100 g / per 100 ml only for small packs (the UK Price
+  // Marking Order's standard units). So a kilo bag is shown per kg and a 100 g
+  // tin per 100 g, the way the edge-of-shelf label does it.
+  function defaultDisplay(kind, labels, amounts) {
     var imperial = labels.some(function (l) { return IMPERIAL.test(l); });
-    if (kind === "mass") return displayFor(kind, imperial ? "oz" : "100g");
-    if (kind === "volume") return displayFor(kind, imperial ? "floz" : "100ml");
+    var big = amounts && amounts.length ? Math.max.apply(null, amounts) : 0;
+    if (kind === "mass") {
+      if (imperial) return displayFor(kind, big >= 453.59237 ? "lb" : "oz");
+      return displayFor(kind, big >= 1000 ? "kg" : "100g");
+    }
+    if (kind === "volume") {
+      if (imperial) return displayFor(kind, "floz");
+      return displayFor(kind, big >= 1000 ? "l" : "100ml");
+    }
     return displayFor("count", "item");
   }
 
@@ -377,7 +389,7 @@
     var byServing = good.length > 0 && good.every(function (r) { return r.servings > 0; });
     function metric(r) { return byServing ? r.effPerServing : r.effPerBase; }
     var display = kind === "count" ? countDisplay(noun)
-      : kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; })) : null;
+      : kind ? (opts.display && displayFor(kind, opts.display)) || defaultDisplay(kind, good.map(function (r) { return r.size.label; }), good.map(function (r) { return r.preparedAmount; })) : null;
     good.forEach(function (r) { r.unitPrice = r.effPerBase * display.base; });
 
     var ranked = good.slice().sort(function (a, b) { return metric(a) - metric(b) || a.index - b.index; });
