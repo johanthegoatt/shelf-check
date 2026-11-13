@@ -109,11 +109,13 @@ test("ranks by unit price and converts to one unit", () => {
     { name: "Imported", price: "$3.00", size: "16 oz" }
   ]);
   assert.equal(c.kind, "mass");
-  assert.equal(c.display.id, "oz");
+  // Imperial sizes are present and the biggest pack is a kilo (over a pound),
+  // so the shelf unit is per lb, the way the ticket would read it.
+  assert.equal(c.display.id, "lb");
   assert.equal(c.best.name, "Big");
   assert.deepEqual(c.ranked.map(r => r.name), ["Big", "Imported", "Small"]);
   close(c.ranked[2].dearerPct, 60);
-  close(c.best.unitPrice, 0.005 * 28.349523125);
+  close(c.best.unitPrice, 0.005 * 453.59237);
   const kg = S.compare([{ price: 2, size: "250 g" }], { display: "kg" });
   close(kg.best.unitPrice, 8);
 });
@@ -272,7 +274,7 @@ test("a member price never makes a pack dearer than its shelf price", () => {
   // The 5 member price is ignored because the shelf price of 3 is lower.
   assert.equal(on.best.name, "A");
   assert.equal(on.best.usedMember, false);
-  close(on.best.unitPrice, 0.3); // per 100 g, still the 3 shelf price
+  close(on.best.unitPrice, 3); // per kg (1 kg packs), still the 3 shelf price
 });
 
 test("without any member prices the card toggle changes nothing", () => {
@@ -449,4 +451,32 @@ test("protein is ignored for volume items and when blank", () => {
   assert.equal(vol.anyProtein, false);
   const none = S.compare([{ name: "Rice", price: "2", size: "1 kg" }]);
   assert.equal(none.anyProtein, false);
+});
+
+test("kilo packs are shown per kg, small packs per 100 g", () => {
+  const big = S.compare([
+    { name: "A", price: "2", size: "1 kg" },
+    { name: "B", price: "3.60", size: "2 kg" }
+  ]);
+  assert.equal(big.display.id, "kg");
+  close(big.best.unitPrice, 1.8); // B, 3.60 / 2 kg
+
+  const small = S.compare([
+    { name: "A", price: "0.80", size: "200 g" },
+    { name: "B", price: "0.90", size: "250 g" }
+  ]);
+  assert.equal(small.display.id, "100g");
+});
+
+test("litre bottles are shown per litre, small bottles per 100 ml", () => {
+  const big = S.compare([
+    { name: "A", price: "1.50", size: "1 l" },
+    { name: "B", price: "2.70", size: "2 l" }
+  ]);
+  assert.equal(big.display.id, "l");
+  const small = S.compare([
+    { name: "A", price: "1.20", size: "330 ml" },
+    { name: "B", price: "1.40", size: "500 ml" }
+  ]);
+  assert.equal(small.display.id, "100ml");
 });
